@@ -1,69 +1,40 @@
-"""
-Video Renderer
-"""
-
 from moviepy.editor import (
     VideoFileClip,
     CompositeVideoClip,
     ColorClip,
-    ImageClip,
+    ImageClip
 )
 
 WIDTH = 1080
 HEIGHT = 1920
 
 
-def prepare_video(video_path):
+def render_reel(video_path, quote_image, output_path):
 
-    clip = VideoFileClip(str(video_path))
+    video = (
+        VideoFileClip(video_path)
+        .resize(height=HEIGHT)
+    )
 
-    clip = clip.resize(height=HEIGHT)
-
-    if clip.w > WIDTH:
-        clip = clip.crop(
-            x_center=clip.w / 2,
+    if video.w > WIDTH:
+        video = video.crop(
+            x_center=video.w / 2,
             width=WIDTH
         )
-    else:
-        clip = clip.resize(width=WIDTH)
 
-    return clip.set_position("center")
-
-
-def create_overlay(duration, opacity=0.35):
-
-    return (
+    overlay = (
         ColorClip(
-            size=(WIDTH, HEIGHT),
+            (WIDTH, HEIGHT),
             color=(0, 0, 0)
         )
-        .set_duration(duration)
-        .set_opacity(opacity)
+        .set_duration(video.duration)
+        .set_opacity(0.35)
     )
 
-
-def create_quote_layer(image_path, duration):
-
-    return (
-        ImageClip(str(image_path))
-        .set_duration(duration)
+    quote = (
+        ImageClip(quote_image)
+        .set_duration(video.duration)
         .set_position("center")
-    )
-
-
-def render_reel(
-    video_path,
-    quote_image,
-    output_path
-):
-
-    video = prepare_video(video_path)
-
-    overlay = create_overlay(video.duration)
-
-    quote = create_quote_layer(
-        quote_image,
-        video.duration
     )
 
     final = CompositeVideoClip([
@@ -73,10 +44,8 @@ def render_reel(
     ])
 
     final.write_videofile(
-        str(output_path),
+        output_path,
         fps=30,
         codec="libx264",
         audio_codec="aac"
     )
-
-    return output_path
