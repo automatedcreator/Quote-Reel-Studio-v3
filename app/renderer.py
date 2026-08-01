@@ -1,10 +1,11 @@
-from moviepy.editor import ( random
+import random
+
+from moviepy.editor import (
     VideoFileClip,
     CompositeVideoClip,
     ColorClip,
     ImageClip
 )
-
 WIDTH = 1080
 HEIGHT = 1920
 
