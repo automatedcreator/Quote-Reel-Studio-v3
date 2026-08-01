@@ -1,4 +1,4 @@
-from moviepy.editor import (import random
+from moviepy.editor import ( random
     VideoFileClip,
     CompositeVideoClip,
     ColorClip,
