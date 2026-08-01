@@ -1,0 +1,9 @@
+moviepy==1.0.3
+opencv-python
+numpy
+Pillow
+pandas
+openpyxl
+requests
+imageio
+imageio-ffmpeg
