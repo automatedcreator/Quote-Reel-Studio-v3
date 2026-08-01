@@ -4,8 +4,9 @@ from moviepy.editor import (
     VideoFileClip,
     CompositeVideoClip,
     ColorClip,
-    ImageClip
+    ImageClip,
 )
+
 WIDTH = 1080
 HEIGHT = 1920
 
@@ -14,11 +15,11 @@ def render_reel(video_path, quote_image, output_path):
 
     video = VideoFileClip(video_path)
 
-if video.duration > 20:
-    start = random.randint(0, int(video.duration - 20))
-    video = video.subclip(start, start + 20)
+    if video.duration > 20:
+        start = random.randint(0, max(0, int(video.duration - 20)))
+        video = video.subclip(start, start + 20)
 
-video = video.resize(height=HEIGHT)
+    video = video.resize(height=HEIGHT)
 
     if video.w > WIDTH:
         video = video.crop(
@@ -27,10 +28,7 @@ video = video.resize(height=HEIGHT)
         )
 
     overlay = (
-        ColorClip(
-            (WIDTH, HEIGHT),
-            color=(0, 0, 0)
-        )
+        ColorClip((WIDTH, HEIGHT), color=(0, 0, 0))
         .set_duration(video.duration)
         .set_opacity(0.35)
     )
