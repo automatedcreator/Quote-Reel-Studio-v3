@@ -1,42 +1,58 @@
-import gradio as gr
+import os
 import shutil
 from pathlib import Path
 
-from main import main
+import gradio as gr
+
+from app.quotes import load_quotes
+from app.typography import create_quote_image
+from app.renderer import render_reel
 
 
-def generate(excel_file, video_files):
+def generate_reels(excel_file, video_files):
 
-    # Clean old folders
+    # Clean folders
     shutil.rmtree("quotes", ignore_errors=True)
     shutil.rmtree("videos", ignore_errors=True)
 
-    Path("quotes").mkdir(exist_ok=True)
-    Path("videos").mkdir(exist_ok=True)
-    Path("output").mkdir(exist_ok=True)
+    os.makedirs("quotes", exist_ok=True)
+    os.makedirs("videos", exist_ok=True)
+    os.makedirs("output", exist_ok=True)
 
     # Copy Excel
-    shutil.copy(excel_file, "quotes/Simple Quotes.xlsx")
+    shutil.copy(excel_file.name, "quotes/Simple Quotes.xlsx")
 
-    # Copy videos
+    # Copy Videos
     for video in video_files:
-        shutil.copy(video, f"videos/{Path(video).name}")
+        shutil.copy(video.name, f"videos/{Path(video.name).name}")
 
-    # Generate reels
-    main()
+    quotes = load_quotes("quotes/Simple Quotes.xlsx")
+    videos = list(Path("videos").glob("*"))
 
-    return "✅ All reels generated! Check the output folder."
+    for i, quote in enumerate(quotes):
+
+        image = create_quote_image(quote)
+
+        render_reel(
+            str(videos[i % len(videos)]),
+            image,
+            f"output/reel_{i+1:03d}.mp4"
+        )
+
+    return "✅ All reels generated successfully!\n\nCheck the output folder."
 
 
 demo = gr.Interface(
-    fn=generate,
+    fn=generate_reels,
     inputs=[
         gr.File(label="Excel File"),
-        gr.File(label="Videos", file_count="multiple")
+        gr.File(label="Videos", file_count="multiple"),
     ],
-    outputs="text",
-    title="Quote Reel Studio v1.0"
+    outputs=gr.Textbox(label="Status"),
+    title="Quote Reel Studio v1.0",
+    description="Upload an Excel file and one or more videos to generate reels."
 )
 
+
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(share=True)
