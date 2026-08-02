@@ -8,23 +8,24 @@ import gradio as gr
 from app.quotes import load_quotes
 from app.typography import create_quote_image
 from app.renderer import render_reel
+from app.themes import list_themes
 
 
-def generate_reels(excel_file, video_files):
+# --------------------------------------------------
+# Main Generator
+# --------------------------------------------------
 
-    # ----------------------------
-    # Validate Inputs
-    # ----------------------------
+def generate_reels(
+    excel_file,
+    video_files,
+    theme_name,
+):
 
     if excel_file is None:
-        raise gr.Error("Please upload an Excel file.")
+        raise gr.Error("Upload Excel File")
 
     if not video_files:
-        raise gr.Error("Please upload at least one video.")
-
-    # ----------------------------
-    # Prepare folders
-    # ----------------------------
+        raise gr.Error("Upload at least one video")
 
     shutil.rmtree("quotes", ignore_errors=True)
     shutil.rmtree("videos", ignore_errors=True)
@@ -34,54 +35,47 @@ def generate_reels(excel_file, video_files):
     os.makedirs("videos", exist_ok=True)
     os.makedirs("output", exist_ok=True)
 
-    # ----------------------------
-    # Copy uploaded files
-    # ----------------------------
-
-    shutil.copy(excel_file.name, "quotes/Simple Quotes.xlsx")
+    shutil.copy(
+        excel_file.name,
+        "quotes/Simple Quotes.xlsx"
+    )
 
     for video in video_files:
-        shutil.copy(video.name, f"videos/{Path(video.name).name}")
 
-    # ----------------------------
-    # Load Quotes
-    # ----------------------------
+        shutil.copy(
+            video.name,
+            f"videos/{Path(video.name).name}"
+        )
 
-    try:
-        quotes = load_quotes("quotes/Simple Quotes.xlsx")
-    except Exception as e:
-        raise gr.Error(f"Unable to read Excel file.\n\n{e}")
+    quotes = load_quotes(
+        "quotes/Simple Quotes.xlsx"
+    )
+
+    videos = list(
+        Path("videos").glob("*")
+    )
 
     if len(quotes) == 0:
-        raise gr.Error("No quotes found inside the Excel file.")
-
-    videos = list(Path("videos").glob("*"))
+        raise gr.Error("No Quotes Found")
 
     if len(videos) == 0:
-        raise gr.Error("No videos found.")
-
-    # ----------------------------
-    # Generate Reels
-    # ----------------------------
+        raise gr.Error("No Videos Found")
 
     for i, quote in enumerate(quotes):
 
-        image = create_quote_image(quote)
+        image = create_quote_image(
+            quote,
+            theme_name=theme_name
+        )
 
-        try:
-
-            render_reel(
-                str(videos[i % len(videos)]),
-                image,
-                f"output/reel_{i+1:03d}.mp4"
-            )
-
-        except Exception as e:
-            raise gr.Error(f"Error generating Reel {i+1}\n\n{e}")
-
-    # ----------------------------
+        render_reel(
+            str(videos[i % len(videos)]),
+            image,
+            f"output/reel_{i+1:03d}.mp4"
+        )
+            # -------------------------------
     # Create ZIP
-    # ----------------------------
+    # -------------------------------
 
     zip_path = "output/reels.zip"
 
@@ -93,33 +87,64 @@ def generate_reels(excel_file, video_files):
     return zip_path
 
 
+# --------------------------------------------------
+# UI
+# --------------------------------------------------
+
 demo = gr.Interface(
+
     fn=generate_reels,
+
     inputs=[
+
         gr.File(
-            label="📄 Upload Excel File"
+            label="📄 Quotes Excel"
         ),
+
         gr.File(
-            label="🎥 Upload Videos",
+            label="🎥 Background Videos",
             file_count="multiple"
         ),
+
+        gr.Dropdown(
+            choices=list_themes(),
+            value="apple",
+            label="🎨 Theme"
+        ),
+
     ],
-    outputs=gr.File(
-        label="📥 Download Generated Reels"
-    ),
-    title="🎬 Quote Reel Studio v1.0",
+
+    outputs=[
+
+        gr.File(
+            label="📦 Download ZIP"
+        )
+
+    ],
+
+    title="🎬 Quote Reel Studio v1.1",
+
     description="""
-Generate multiple Instagram quote reels automatically.
+Generate premium Instagram quote reels.
 
-Steps:
+Workflow
 
-1. Upload your Excel file.
-2. Upload one or more background videos.
-3. Click Submit.
-4. Download reels.zip.
+1. Upload Quotes Excel
+
+2. Upload Videos
+
+3. Select Theme
+
+4. Generate
+
+5. Download ZIP
 """
+
 )
 
 
 if __name__ == "__main__":
-    demo.launch(share=True)
+
+    demo.launch(
+        share=True
+    )
