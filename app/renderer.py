@@ -4,15 +4,16 @@ from moviepy.editor import (
     VideoFileClip,
     CompositeVideoClip,
     ColorClip,
-    ImageClip
+    ImageClip,
 )
 
 from app.config import WIDTH, HEIGHT, FPS
+from app.themes import get_theme
 
 CLIP_DURATION = 20
 
 
-def prepare_video(video_path):
+def prepare_video(video_path, theme):
 
     video = VideoFileClip(video_path)
 
@@ -28,6 +29,13 @@ def prepare_video(video_path):
             start + CLIP_DURATION
         )
 
+    brightness = theme.get("brightness", 1.0)
+
+    if brightness != 1:
+        video = video.fx(lambda clip: clip.fl_image(
+            lambda frame: (frame * brightness).clip(0, 255).astype("uint8")
+        ))
+
     video = video.resize(height=HEIGHT)
 
     if video.w > WIDTH:
@@ -40,7 +48,7 @@ def prepare_video(video_path):
     return video
 
 
-def build_overlay(duration):
+def build_overlay(duration, theme):
 
     return (
         ColorClip(
@@ -48,36 +56,75 @@ def build_overlay(duration):
             color=(0, 0, 0)
         )
         .set_duration(duration)
-        .set_opacity(0.35)
+        .set_opacity(
+            theme.get("overlay_opacity", 0.35)
+        )
     )
 
 
-def build_quote(image_path, duration):
+def build_quote(image_path, duration, theme):
 
-    return (
+    animation = theme.get("animation", "fade")
+
+    clip = (
         ImageClip(image_path)
         .set_duration(duration)
-        .set_position("center")
+    )
+
+    if animation == "slide_up":
+
+        clip = clip.set_position(
+            lambda t: (
+                "center",
+                120 - min(t * 80, 80)
+            )
+        )
+
+    elif animation == "slide_down":
+
+        clip = clip.set_position(
+            lambda t: (
+                "center",
+                -40 + min(t * 80, 80)
+            )
+        )
+
+    else:
+
+        clip = clip.set_position("center")
+
+    clip = (
+        clip
         .fadein(0.6)
         .fadeout(0.6)
     )
+
+    return clip
 
 
 def render_reel(
     video_path,
     quote_image,
     output_path,
+    theme_name="apple",
 ):
 
-    video = prepare_video(video_path)
+    theme = get_theme(theme_name)
+
+    video = prepare_video(
+        video_path,
+        theme
+    )
 
     overlay = build_overlay(
-        video.duration
+        video.duration,
+        theme
     )
 
     quote = build_quote(
         quote_image,
-        video.duration
+        video.duration,
+        theme
     )
 
     final = CompositeVideoClip(

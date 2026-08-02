@@ -69,10 +69,11 @@ def generate_reels(
         )
 
         render_reel(
-            str(videos[i % len(videos)]),
-            image,
-            f"output/reel_{i+1:03d}.mp4"
-        )
+    str(videos[i % len(videos)]),
+    image,
+    f"output/reel_{i+1:03d}.mp4",
+    theme_name
+)
             # -------------------------------
     # Create ZIP
     # -------------------------------
