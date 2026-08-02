@@ -14,21 +14,17 @@ FPS = 30
 
 def render_reel(video_path, quote_image, output_path):
 
-    # Load video
     video = VideoFileClip(video_path)
 
-    # Random 20-second clip
     if video.duration > 20:
         start = random.uniform(0, video.duration - 20)
         video = video.subclip(start, start + 20)
 
-    # Better resize
     if video.w / video.h < WIDTH / HEIGHT:
         video = video.resize(width=WIDTH)
     else:
         video = video.resize(height=HEIGHT)
 
-    # Center crop
     video = video.crop(
         x_center=video.w / 2,
         y_center=video.h / 2,
@@ -36,9 +32,9 @@ def render_reel(video_path, quote_image, output_path):
         height=HEIGHT
     )
 
-    # Slow cinematic zoom (Ken Burns)
     duration = video.duration
 
+    # Cinematic Zoom
     video = video.resize(
         lambda t: 1 + (0.08 * (t / duration))
     )
@@ -50,21 +46,22 @@ def render_reel(video_path, quote_image, output_path):
         height=HEIGHT
     )
 
-    # Dark overlay
+    # Overlay
     overlay = (
         ColorClip((WIDTH, HEIGHT), color=(0, 0, 0))
         .set_duration(duration)
         .set_opacity(0.30)
     )
 
-    # Quote
+    # Quote Animation
     quote = (
         ImageClip(quote_image)
         .set_duration(duration)
         .set_position("center")
+        .fadein(1.0)
+        .fadeout(1.0)
     )
 
-    # Final
     final = CompositeVideoClip([
         video,
         overlay,
