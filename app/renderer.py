@@ -9,7 +9,6 @@ from moviepy.editor import (
 
 from app.config import WIDTH, HEIGHT, FPS
 
-
 CLIP_DURATION = 20
 
 
@@ -62,7 +61,9 @@ def build_quote(image_path, duration):
         .fadein(0.6)
         .fadeout(0.6)
     )
-    def render_reel(
+
+
+def render_reel(
     video_path,
     quote_image,
     output_path,
