@@ -1,5 +1,6 @@
 import os
 import shutil
+import zipfile
 from pathlib import Path
 
 import gradio as gr
@@ -9,11 +10,12 @@ from app.typography import create_quote_image
 from app.renderer import render_reel
 
 
-def generate_reels(excel_file, video_files):
+def generate_reels(excel_file, video_files, progress=gr.Progress()):
 
-    # Clean folders
+    # Clean old folders
     shutil.rmtree("quotes", ignore_errors=True)
     shutil.rmtree("videos", ignore_errors=True)
+    shutil.rmtree("output", ignore_errors=True)
 
     os.makedirs("quotes", exist_ok=True)
     os.makedirs("videos", exist_ok=True)
@@ -29,7 +31,14 @@ def generate_reels(excel_file, video_files):
     quotes = load_quotes("quotes/Simple Quotes.xlsx")
     videos = list(Path("videos").glob("*"))
 
+    total = len(quotes)
+
     for i, quote in enumerate(quotes):
+
+        progress(
+            (i + 1) / total,
+            desc=f"Generating Reel {i+1}/{total}"
+        )
 
         image = create_quote_image(quote)
 
@@ -39,16 +48,26 @@ def generate_reels(excel_file, video_files):
             f"output/reel_{i+1:03d}.mp4"
         )
 
-    return "✅ All reels generated successfully!\n\nCheck the output folder."
+    # Create ZIP
+    zip_path = "output/reels.zip"
+
+    with zipfile.ZipFile(zip_path, "w") as zipf:
+        for file in Path("output").glob("*.mp4"):
+            zipf.write(file, arcname=file.name)
+
+    return zip_path
 
 
 demo = gr.Interface(
     fn=generate_reels,
     inputs=[
         gr.File(label="Excel File"),
-        gr.File(label="Videos", file_count="multiple"),
+        gr.File(
+            label="Videos",
+            file_count="multiple"
+        ),
     ],
-    outputs=gr.Textbox(label="Status"),
+    outputs=gr.File(label="Download Reels ZIP"),
     title="Quote Reel Studio v1.0",
     description="Upload an Excel file and one or more videos to generate reels."
 )
