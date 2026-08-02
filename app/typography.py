@@ -45,7 +45,9 @@ def get_font(size):
         str(ensure_font()),
         size
     )
-    def create_quote_image(
+
+
+def create_quote_image(
     quote,
     output_path="temp/quote.png",
     theme_name="apple",
