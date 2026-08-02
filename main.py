@@ -11,7 +11,13 @@ def main():
 
     videos = list(Path("videos").glob("*"))
 
+    if len(videos) == 0:
+        raise Exception("No videos found inside videos folder.")
+
     Path("output").mkdir(exist_ok=True)
+
+    print(f"Found {len(quotes)} quotes")
+    print(f"Found {len(videos)} videos\n")
 
     for i, quote in enumerate(quotes):
 
@@ -19,15 +25,18 @@ def main():
 
         video = videos[i % len(videos)]
 
+        output_file = f"output/reel_{i+1:03d}.mp4"
+
+        print(f"Generating {output_file}")
+
         render_reel(
             str(video),
             image,
-            f"output/reel_{i+1:03d}.mp4"
+            output_file
         )
 
-        print(f"✅ Reel {i+1} Created")
-
-    print("\n🎉 All reels generated")
+    print("\n🎉 DONE!")
+    print("All reels saved in output/")
 
 
 if __name__ == "__main__":
