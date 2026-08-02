@@ -29,13 +29,6 @@ def prepare_video(video_path, theme):
             start + CLIP_DURATION
         )
 
-    brightness = theme.get("brightness", 1.0)
-
-    if brightness != 1:
-        video = video.fx(lambda clip: clip.fl_image(
-            lambda frame: (frame * brightness).clip(0, 255).astype("uint8")
-        ))
-
     video = video.resize(height=HEIGHT)
 
     if video.w > WIDTH:
@@ -57,14 +50,14 @@ def build_overlay(duration, theme):
         )
         .set_duration(duration)
         .set_opacity(
-            theme.get("overlay_opacity", 0.35)
+            theme["overlay_opacity"]
         )
     )
 
 
 def build_quote(image_path, duration, theme):
 
-    animation = theme.get("animation", "fade")
+    animation = theme["animation"]
 
     clip = (
         ImageClip(image_path)
@@ -76,7 +69,7 @@ def build_quote(image_path, duration, theme):
         clip = clip.set_position(
             lambda t: (
                 "center",
-                120 - min(t * 80, 80)
+                HEIGHT * 0.75 - min(t * 120, 120)
             )
         )
 
@@ -85,7 +78,7 @@ def build_quote(image_path, duration, theme):
         clip = clip.set_position(
             lambda t: (
                 "center",
-                -40 + min(t * 80, 80)
+                HEIGHT * 0.10 + min(t * 120, 120)
             )
         )
 
@@ -95,8 +88,8 @@ def build_quote(image_path, duration, theme):
 
     clip = (
         clip
-        .fadein(0.6)
-        .fadeout(0.6)
+        .fadein(0.7)
+        .fadeout(0.7)
     )
 
     return clip

@@ -16,8 +16,7 @@ WIDTH = 1080
 HEIGHT = 1920
 
 FONT_DIR = Path("assets/fonts")
-
-DEFAULT_FONT = FONT_DIR / "NotoSansDevanagari-Regular.ttf"
+FONT_FILE = FONT_DIR / "NotoSansDevanagari-Regular.ttf"
 
 FONT_URL = (
     "https://github.com/googlefonts/noto-fonts/raw/main/"
@@ -26,93 +25,27 @@ FONT_URL = (
 )
 
 
-# ------------------------------------
-# Font
-# ------------------------------------
-
 def ensure_font():
 
     FONT_DIR.mkdir(parents=True, exist_ok=True)
 
-    if not DEFAULT_FONT.exists():
+    if not FONT_FILE.exists():
 
         r = requests.get(FONT_URL)
-
         r.raise_for_status()
 
-        DEFAULT_FONT.write_bytes(r.content)
+        FONT_FILE.write_bytes(r.content)
 
-    return DEFAULT_FONT
+    return FONT_FILE
 
 
-def load_font(size):
+def get_font(size):
 
     return ImageFont.truetype(
         str(ensure_font()),
         size
     )
-
-
-# ------------------------------------
-# Auto Font Size
-# ------------------------------------
-
-def auto_font(draw, text, theme):
-
-    size = theme["font_size"]
-
-    while size > 40:
-
-        font = load_font(size)
-
-        wrapped = textwrap.fill(
-            text,
-            width=max(12, int(1100 / size))
-        )
-
-        bbox = draw.multiline_textbbox(
-            (0, 0),
-            wrapped,
-            font=font,
-            spacing=theme["line_spacing"],
-            align="center"
-        )
-
-        width = bbox[2] - bbox[0]
-
-        if width <= theme["text_width"]:
-            return font, wrapped
-
-        size -= 2
-
-    return load_font(40), wrapped
-
-
-# ------------------------------------
-# Shadow
-# ------------------------------------
-
-def draw_shadow(draw, pos, text, font, theme):
-
-    x, y = pos
-
-    for ox in [-3, -2, -1, 1, 2, 3]:
-
-        for oy in [-3, -2, -1, 1, 2, 3]:
-
-            draw.multiline_text(
-                (x + ox, y + oy),
-                text,
-                font=font,
-                fill=theme["shadow_color"],
-                spacing=theme["line_spacing"],
-                align="center"
-            )
-            # ------------------------------------
-# Main
-# ------------------------------------
-
-def create_quote_image(
+    def create_quote_image(
     quote,
     output_path="temp/quote.png",
     theme_name="apple",
@@ -130,20 +63,20 @@ def create_quote_image(
 
     draw = ImageDraw.Draw(img)
 
-    # Premium Quote Marks
-    quote = f"“{quote.strip()}”"
+    font = get_font(
+        theme["font_size"]
+    )
 
-    font, wrapped = auto_font(
-        draw,
-        quote,
-        theme
+    wrapped = textwrap.fill(
+        f"“{quote.strip()}”",
+        width=18
     )
 
     bbox = draw.multiline_textbbox(
         (0, 0),
         wrapped,
         font=font,
-        spacing=theme["line_spacing"],
+        spacing=20,
         align="center"
     )
 
@@ -151,24 +84,59 @@ def create_quote_image(
     h = bbox[3] - bbox[1]
 
     x = (WIDTH - w) // 2
-    y = (HEIGHT - h) // 2
 
-    # Shadow
-    draw_shadow(
-        draw,
-        (x, y),
-        wrapped,
-        font,
-        theme
+    position = theme.get(
+        "text_position",
+        "center"
     )
 
-    # Main Text
+    if position == "upper":
+
+        y = HEIGHT // 4
+
+    elif position == "lower":
+
+        y = int(HEIGHT * 0.65)
+
+    elif position == "bottom":
+
+        y = int(HEIGHT * 0.75)
+
+    else:
+
+        y = (HEIGHT - h) // 2
+
+    blur = theme.get(
+        "shadow_blur",
+        4
+    )
+
+    shadow = theme.get(
+        "shadow_color",
+        (0, 0, 0)
+    )
+
+    for dx in range(-blur, blur + 1):
+        for dy in range(-blur, blur + 1):
+
+            if dx == 0 and dy == 0:
+                continue
+
+            draw.multiline_text(
+                (x + dx, y + dy),
+                wrapped,
+                font=font,
+                fill=shadow,
+                spacing=20,
+                align="center"
+            )
+
     draw.multiline_text(
         (x, y),
         wrapped,
         font=font,
         fill=theme["text_color"],
-        spacing=theme["line_spacing"],
+        spacing=20,
         align="center"
     )
 
