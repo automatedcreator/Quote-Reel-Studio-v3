@@ -53,14 +53,14 @@ def render_reel(video_path, quote_image, output_path):
         .set_opacity(0.30)
     )
 
-    # Quote Animation
-    quote = (
-        ImageClip(quote_image)
-        .set_duration(duration)
-        .set_position("center")
-        .fadein(1.0)
-        .fadeout(1.0)
-    )
+    # Premium Slide-Up Animation
+quote = (
+    ImageClip(quote_image)
+    .set_duration(duration)
+    .set_position(lambda t: ("center", 100 - min(t * 80, 80)))
+    .fadein(0.8)
+    .fadeout(0.8)
+)
 
     final = CompositeVideoClip([
         video,
