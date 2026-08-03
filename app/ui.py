@@ -1,5 +1,6 @@
 import os
 import shutil
+import time
 from pathlib import Path
 
 import gradio as gr
@@ -23,6 +24,17 @@ from app.project_manager import (
     copy_reel,
 )
 
+from app.logger import (
+    start_project,
+    finish_project,
+    log,
+    error,
+)
+
+from app.progress import ProgressTracker
+
+from app.stats import save_stats
+
 
 # --------------------------------------------------
 # Generator
@@ -38,188 +50,226 @@ def generate_reels(
 
 ):
 
-    if excel_file is None:
-        raise gr.Error("Upload Excel File")
+    start_time = time.time()
 
-    if not video_files:
-        raise gr.Error("Upload Videos")
+    try:
 
-    shutil.rmtree(
-        "quotes",
-        ignore_errors=True
-    )
+        if excel_file is None:
+            raise gr.Error("Upload Excel File")
 
-    shutil.rmtree(
-        "videos",
-        ignore_errors=True
-    )
+        if not video_files:
+            raise gr.Error("Upload Videos")
 
-    shutil.rmtree(
-        "output",
-        ignore_errors=True
-    )
+        shutil.rmtree(
+            "quotes",
+            ignore_errors=True
+        )
 
-    os.makedirs(
-        "quotes",
-        exist_ok=True
-    )
+        shutil.rmtree(
+            "videos",
+            ignore_errors=True
+        )
 
-    os.makedirs(
-        "videos",
-        exist_ok=True
-    )
+        shutil.rmtree(
+            "output",
+            ignore_errors=True
+        )
 
-    os.makedirs(
-        "output",
-        exist_ok=True
-    )
+        os.makedirs(
+            "quotes",
+            exist_ok=True
+        )
 
-    shutil.copy(
+        os.makedirs(
+            "videos",
+            exist_ok=True
+        )
 
-        excel_file.name,
-
-        "quotes/Simple Quotes.xlsx"
-
-    )
-
-    for video in video_files:
+        os.makedirs(
+            "output",
+            exist_ok=True
+        )
 
         shutil.copy(
 
-            video.name,
+            excel_file.name,
 
-            f"videos/{Path(video.name).name}"
+            "quotes/Simple Quotes.xlsx"
 
         )
 
-    quotes = load_quotes(
-        "quotes/Simple Quotes.xlsx"
-    )
+        for video in video_files:
 
-    videos = list(
-        Path("videos").glob("*")
-    )
+            shutil.copy(
 
-    if not quotes:
-        raise gr.Error("No Quotes Found")
+                video.name,
 
-    project_name = Path(
-        excel_file.name
-    ).stem
+                f"videos/{Path(video.name).name}"
 
-    save_project(
+            )
 
-        project_name,
+        quotes = load_quotes(
+            "quotes/Simple Quotes.xlsx"
+        )
 
-        theme_name,
+        videos = list(
+            Path("videos").glob("*")
+        )
 
-        len(quotes)
+        if len(quotes) == 0:
+            raise gr.Error("No Quotes Found")
 
-    )
+        project_name = Path(
+            excel_file.name
+        ).stem
 
-    copy_quotes(
+        tracker = ProgressTracker(
+            len(quotes)
+        )
 
-        excel_file.name,
+        start_project(
 
-        project_name
+            project_name,
 
-    )
+            theme_name,
 
-    for video in video_files:
+            len(quotes)
 
-        copy_video(
+        )
 
-            video.name,
+        save_project(
+
+            project_name,
+
+            theme_name,
+
+            len(quotes)
+
+        )
+
+        copy_quotes(
+
+            excel_file.name,
 
             project_name
 
         )
 
-    captions = []
+        for video in video_files:
 
-    hashtags = [
+            copy_video(
 
-        "#quotes",
+                video.name,
 
-        "#motivation",
+                project_name
 
-        "#mindset",
+            )
 
-        f"#{theme_name}"
+        captions = []
 
-    ]
+        hashtags = [
 
-    for i, quote in enumerate(quotes):
+            "#quotes",
 
-        image = create_quote_image(
+            "#motivation",
 
-            quote,
+            "#mindset",
 
-            theme_name=theme_name
+            f"#{theme_name}"
 
-        )
+        ]
 
-        output = (
+        for i, quote in enumerate(quotes):
 
-            f"output/reel_{i+1:03d}.mp4"
+            image = create_quote_image(
 
-        )
+                quote,
 
-        render_reel(
+                theme_name=theme_name
 
-            str(
+            )
 
-                videos[
-                    i % len(videos)
-                ]
+            output = (
 
-            ),
+                f"output/reel_{i+1:03d}.mp4"
 
-            image,
+            )
 
-            output,
+            render_reel(
 
-            theme_name
+                str(
 
-        )
+                    videos[
+                        i % len(videos)
+                    ]
 
-        copy_reel(
+                ),
 
-            output,
+                image,
+
+                output,
+
+                theme_name
+
+            )
+
+            copy_reel(
+
+                output,
+
+                project_name
+
+            )
+
+            captions.append(
+                quote
+            )
+
+            tracker.update()
+
+            log(
+                tracker.status()
+            )
+
+        create_summary(
+
+            theme_name,
+
+            len(quotes),
 
             project_name
 
         )
 
-        captions.append(
+        create_caption_file(
+            captions
+        )
 
-            quote
+        create_hashtag_file(
+            hashtags
+        )
+
+        save_stats(
+
+            project_name,
+
+            theme_name,
+
+            len(quotes),
+
+            start_time
 
         )
 
-    create_summary(
+        finish_project()
 
-        theme_name,
+        return export_zip()
 
-        len(quotes),
+    except Exception as e:
 
-        project_name
+        error(str(e))
 
-    )
-
-    create_caption_file(
-
-        captions
-
-    )
-
-    create_hashtag_file(
-
-        hashtags
-
-    )
-
-    return export_zip()
+        raise
 
 
 # --------------------------------------------------
@@ -233,61 +283,45 @@ demo = gr.Interface(
     inputs=[
 
         gr.File(
-
             label="📄 Quotes Excel"
-
         ),
 
         gr.File(
-
             label="🎥 Videos",
-
             file_count="multiple"
-
         ),
 
         gr.Dropdown(
-
             choices=list_themes(),
-
             value="apple",
-
             label="🎨 Theme"
-
         ),
 
     ],
 
     outputs=[
-
         gr.File(
-
             label="📦 Download ZIP"
-
         )
-
     ],
 
-    title="🎬 Quote Reel Studio v1.2",
+    title="🎬 Quote Reel Studio v1.0",
 
     description="""
+Generate Premium Instagram Reels
 
-Generate premium Instagram quote reels.
-
-• Upload Excel
-
-• Upload Videos
-
-• Select Theme
-
-• Generate
-
-• Download ZIP
-
+✔ Batch Processing
+✔ Themes
+✔ Cinematic Rendering
+✔ Auto Project Save
+✔ Statistics
+✔ Logs
+✔ Captions
+✔ Hashtags
+✔ ZIP Export
 """
 
 )
-
 
 if __name__ == "__main__":
 
