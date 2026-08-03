@@ -1,67 +1,109 @@
 """
-Quote Reel Studio v1.0
 Global Configuration
 """
 
-# -----------------------------
-# Video Settings
-# -----------------------------
+from pathlib import Path
+
+# ---------------------------------------
+# Video
+# ---------------------------------------
 
 WIDTH = 1080
 HEIGHT = 1920
 
 FPS = 30
 
-VIDEO_BITRATE = "6000k"
+CLIP_DURATION = 20
 
-OUTPUT_FORMAT = "mp4"
+VIDEO_CODEC = "libx264"
 
-# -----------------------------
-# Typography
-# -----------------------------
+AUDIO_CODEC = "aac"
 
-FONT_DIR = "assets/fonts"
+PRESET = "medium"
 
-FONT_SIZE = 72
+THREADS = 4
 
-LINE_SPACING = 15
 
-TEXT_COLOR = "white"
+# ---------------------------------------
+# Project
+# ---------------------------------------
 
-SHADOW_COLOR = "black"
-
-MAX_TEXT_WIDTH = 850
-
-# -----------------------------
-# Directories
-# -----------------------------
-
-VIDEO_DIR = "videos"
-
-QUOTE_DIR = "quotes"
-
-OUTPUT_DIR = "output"
-
-TEMP_DIR = "temp"
-
-# -----------------------------
-# Theme
-# -----------------------------
-
-DEFAULT_THEME = "poetry"
-
-# -----------------------------
-# Export
-# -----------------------------
-
-OUTPUT_NAME = "reel"
-
-ZIP_NAME = "reels.zip"
-
-# -----------------------------
-# UI
-# -----------------------------
-
-APP_NAME = "Quote Reel Studio"
+PROJECT_NAME = "Quote Reel Studio"
 
 VERSION = "1.0"
+
+DEFAULT_THEME = "apple"
+
+
+# ---------------------------------------
+# Directories
+# ---------------------------------------
+
+ROOT_DIR = Path(".")
+
+OUTPUT_DIR = ROOT_DIR / "output"
+
+PROJECTS_DIR = ROOT_DIR / "Projects"
+
+TEMP_DIR = ROOT_DIR / "temp"
+
+VIDEOS_DIR = ROOT_DIR / "videos"
+
+QUOTES_DIR = ROOT_DIR / "quotes"
+
+ASSETS_DIR = ROOT_DIR / "assets"
+
+FONT_DIR = ASSETS_DIR / "fonts"
+
+
+# ---------------------------------------
+# Export
+# ---------------------------------------
+
+EXPORT_ZIP_NAME = "reels.zip"
+
+SUMMARY_FILE = "summary.txt"
+
+CAPTIONS_FILE = "captions.txt"
+
+HASHTAGS_FILE = "hashtags.txt"
+
+
+# ---------------------------------------
+# Instagram
+# ---------------------------------------
+
+REEL_MAX_DURATION = 90
+
+RECOMMENDED_DURATION = 20
+
+ASPECT_RATIO = "9:16"
+
+
+# ---------------------------------------
+# Create Folders
+# ---------------------------------------
+
+for folder in [
+
+    OUTPUT_DIR,
+
+    PROJECTS_DIR,
+
+    TEMP_DIR,
+
+    VIDEOS_DIR,
+
+    QUOTES_DIR,
+
+    FONT_DIR,
+
+]:
+
+    folder.mkdir(
+
+        parents=True,
+
+        exist_ok=True
+
+    )
