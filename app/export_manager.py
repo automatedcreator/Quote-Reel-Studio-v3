@@ -50,7 +50,7 @@ def export_zip(
                 arcname=reel.name
             )
 
-    return zip_path
+    return str(zip_path)
 
 
 def export_selected(
@@ -82,7 +82,7 @@ def export_selected(
                     arcname=file.name
                 )
 
-    return zip_path
+    return str(zip_path)
 
 
 def create_summary(
@@ -118,7 +118,7 @@ Generated :
 """
         )
 
-    return summary
+    return str(summary)
 
 
 def create_caption_file(
@@ -152,7 +152,7 @@ def create_caption_file(
 
             f.write("\n\n")
 
-    return file
+    return str(file)
 
 
 def create_hashtag_file(
@@ -175,7 +175,7 @@ def create_hashtag_file(
             "\n".join(hashtags)
         )
 
-    return file
+    return str(file)
 
 
 def copy_thumbnail(
@@ -195,4 +195,4 @@ def copy_thumbnail(
         dst
     )
 
-    return dst
+    return str(dst)
