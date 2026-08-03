@@ -147,7 +147,7 @@ def generate_reels(
 
         captions = []
 
-                hashtags = [
+            hashtags = [
 
             "#quotes",
 
