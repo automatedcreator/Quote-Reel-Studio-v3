@@ -299,37 +299,24 @@ demo = gr.Interface(
     inputs=[
 
         gr.File(
-
             label="📄 Quotes Excel"
-
         ),
 
         gr.File(
-
             label="🎥 Videos",
-
             file_count="multiple",
-
         ),
 
         gr.Dropdown(
-
             choices=list_themes(),
-
             value="apple",
-
             label="🎨 Theme",
-
         ),
 
         gr.Dropdown(
-
             choices=list_presets(),
-
             value="Apple Minimal",
-
             label="✨ Preset",
-
         ),
 
     ],
@@ -337,9 +324,7 @@ demo = gr.Interface(
     outputs=[
 
         gr.File(
-
             label="📦 Download ZIP"
-
         )
 
     ],
@@ -356,9 +341,7 @@ Generate Premium Instagram Reels
 ✅ Progress Tracking
 ✅ Statistics
 ✅ ZIP Export
-""",
-
-    allow_flagging="never",
+"""
 
 )
 
@@ -370,9 +353,6 @@ Generate Premium Instagram Reels
 if __name__ == "__main__":
 
     demo.launch(
-
         share=True,
-
         debug=False,
-
     )
