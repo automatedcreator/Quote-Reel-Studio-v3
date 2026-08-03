@@ -37,14 +37,15 @@ from app.progress import ProgressTracker
 from app.stats import save_stats
 
 
+# --------------------------------------------------
+# Main Generator
+# --------------------------------------------------
+
 def generate_reels(
 
     excel_file,
-
     video_files,
-
     theme_name,
-
     preset_name,
 
 ):
@@ -53,65 +54,82 @@ def generate_reels(
 
     try:
 
+        # ---------------------------------
+        # Validation
+        # ---------------------------------
+
         if excel_file is None:
-            raise gr.Error("Upload Excel")
+            raise gr.Error("Please upload an Excel file.")
 
         if not video_files:
-            raise gr.Error("Upload Videos")
+            raise gr.Error("Please upload at least one video.")
 
-        shutil.rmtree(
+        # ---------------------------------
+        # Clean Old Folders
+        # ---------------------------------
+
+        for folder in [
+
             "quotes",
-            ignore_errors=True
-        )
-
-        shutil.rmtree(
             "videos",
-            ignore_errors=True
-        )
-
-        shutil.rmtree(
             "output",
-            ignore_errors=True
-        )
 
-        os.makedirs(
-            "quotes",
-            exist_ok=True
-        )
+        ]:
 
-        os.makedirs(
-            "videos",
-            exist_ok=True
-        )
+            shutil.rmtree(
+                folder,
+                ignore_errors=True
+            )
 
-        os.makedirs(
-            "output",
-            exist_ok=True
+            os.makedirs(
+                folder,
+                exist_ok=True
+            )
+
+        # ---------------------------------
+        # Copy Files
+        # ---------------------------------
+
+        excel_destination = (
+            "quotes/Simple Quotes.xlsx"
         )
 
         shutil.copy(
             excel_file.name,
-            "quotes/Simple Quotes.xlsx"
+            excel_destination
         )
 
         for video in video_files:
 
             shutil.copy(
+
                 video.name,
+
                 f"videos/{Path(video.name).name}"
+
             )
 
+        # ---------------------------------
+        # Load Quotes & Videos
+        # ---------------------------------
+
         quotes = load_quotes(
-            "quotes/Simple Quotes.xlsx"
+            excel_destination
         )
 
-        videos = list(
+        videos = sorted(
             Path("videos").glob("*")
         )
 
         if len(quotes) == 0:
+            raise gr.Error("No quotes found.")
 
-            raise gr.Error("No Quotes Found")
+        if len(videos) == 0:
+            raise gr.Error("No videos found.")
+
+        # ---------------------------------
+        # Project Setup
+        # ---------------------------------
 
         project = Path(
             excel_file.name
@@ -145,19 +163,19 @@ def generate_reels(
                 project
             )
 
-                        captions = []
+        captions = []
 
         hashtags = [
 
             "#quotes",
-
             "#motivation",
-
             "#mindset",
-
-            f"#{theme_name}"
+            f"#{theme_name}",
 
         ]
+        # ---------------------------------
+        # Generate Reels
+        # ---------------------------------
 
         for i, quote in enumerate(quotes):
 
@@ -167,18 +185,20 @@ def generate_reels(
 
                 theme_name=theme_name,
 
+                preset_name=preset_name,
+
             )
 
-            output = f"output/reel_{i+1:03d}.mp4"
+            output = (
+                f"output/reel_{i+1:03d}.mp4"
+            )
 
             render_reel(
 
                 str(
-
                     videos[
                         i % len(videos)
                     ]
-
                 ),
 
                 image,
@@ -195,7 +215,7 @@ def generate_reels(
 
                 output,
 
-                project
+                project,
 
             )
 
@@ -212,25 +232,30 @@ def generate_reels(
                 tracker.status()
 
             )
+
+        # ---------------------------------
+        # Export Files
+        # ---------------------------------
+
         create_summary(
 
             theme_name,
 
             len(quotes),
 
-            project
+            project,
 
         )
 
         create_caption_file(
 
-            captions
+            captions,
 
         )
 
         create_hashtag_file(
 
-            hashtags
+            hashtags,
 
         )
 
@@ -242,7 +267,7 @@ def generate_reels(
 
             len(quotes),
 
-            start_time
+            start_time,
 
         )
 
@@ -258,11 +283,13 @@ def generate_reels(
 
         )
 
-        raise
+        raise gr.Error(
 
+            str(e)
 
+        )
 # --------------------------------------------------
-# UI
+# Gradio UI
 # --------------------------------------------------
 
 demo = gr.Interface(
@@ -281,7 +308,7 @@ demo = gr.Interface(
 
             label="🎥 Videos",
 
-            file_count="multiple"
+            file_count="multiple",
 
         ),
 
@@ -291,7 +318,7 @@ demo = gr.Interface(
 
             value="apple",
 
-            label="🎨 Theme"
+            label="🎨 Theme",
 
         ),
 
@@ -301,7 +328,7 @@ demo = gr.Interface(
 
             value="Apple Minimal",
 
-            label="✨ Preset"
+            label="✨ Preset",
 
         ),
 
@@ -317,32 +344,35 @@ demo = gr.Interface(
 
     ],
 
-    title="🎬 Quote Reel Studio v1.1",
+    title="🎬 Quote Reel Studio v3",
 
     description="""
-
 Generate Premium Instagram Reels
 
-✅ Themes
-
+✅ Multiple Themes
 ✅ Premium Presets
-
-✅ Typography Engine
-
-✅ Project Manager
-
+✅ Dynamic Typography
+✅ Automatic Project Manager
+✅ Progress Tracking
 ✅ Statistics
-
 ✅ ZIP Export
+""",
 
-"""
+    allow_flagging="never",
 
 )
+
+
+# --------------------------------------------------
+# Launch
+# --------------------------------------------------
 
 if __name__ == "__main__":
 
     demo.launch(
 
-        share=True
+        share=True,
+
+        debug=False,
 
     )

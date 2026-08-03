@@ -1,38 +1,47 @@
 """
-Premium Typography Engine v2
-Inspired by Premium Instagram Quote Pages
+Premium Typography Engine v3
+Quote Reel Studio
+
+Part 1 / 3
 """
 
 from pathlib import Path
 import textwrap
-import math
 import requests
 
 from PIL import (
     Image,
     ImageDraw,
     ImageFont,
-    ImageFilter
+    ImageFilter,
 )
 
 from app.themes import get_theme
+from app.presets import get_preset
 
-
-# -------------------------------------------------------
+# --------------------------------------------------------
 # Canvas
-# -------------------------------------------------------
+# --------------------------------------------------------
 
 WIDTH = 1080
 HEIGHT = 1920
 
+TOP_SAFE = 180
+BOTTOM_SAFE = 260
+SIDE_PADDING = 110
 
-# -------------------------------------------------------
-# Font
-# -------------------------------------------------------
+LINE_SPACING = 28
+
+# --------------------------------------------------------
+# Fonts
+# --------------------------------------------------------
 
 FONT_DIR = Path("assets/fonts")
 
-DEFAULT_FONT = FONT_DIR / "NotoSansDevanagari-Regular.ttf"
+DEFAULT_FONT = (
+    FONT_DIR /
+    "NotoSansDevanagari-Regular.ttf"
+)
 
 FONT_URL = (
     "https://github.com/googlefonts/noto-fonts/raw/main/"
@@ -40,10 +49,9 @@ FONT_URL = (
     "NotoSansDevanagari-Regular.ttf"
 )
 
-
-# -------------------------------------------------------
-# Download Font
-# -------------------------------------------------------
+# --------------------------------------------------------
+# Font Download
+# --------------------------------------------------------
 
 def ensure_font():
 
@@ -54,488 +62,461 @@ def ensure_font():
 
     if not DEFAULT_FONT.exists():
 
-        r = requests.get(FONT_URL)
+        response = requests.get(
+            FONT_URL,
+            timeout=30
+        )
 
-        r.raise_for_status()
+        response.raise_for_status()
 
         DEFAULT_FONT.write_bytes(
-            r.content
+            response.content
         )
 
     return DEFAULT_FONT
 
 
-# -------------------------------------------------------
-# Load Font
-# -------------------------------------------------------
+# --------------------------------------------------------
+# Font Loader
+# --------------------------------------------------------
 
 def get_font(size):
 
     return ImageFont.truetype(
-
-        str(
-
-            ensure_font()
-
-        ),
-
+        str(ensure_font()),
         size
-
     )
 
 
-# -------------------------------------------------------
-# Dynamic Font Size
-# -------------------------------------------------------
+# --------------------------------------------------------
+# Theme Builder
+# --------------------------------------------------------
+
+def build_theme(
+    theme_name,
+    preset_name=None,
+):
+
+    theme = dict(
+        get_theme(theme_name)
+    )
+
+    if preset_name:
+
+        preset = get_preset(
+            preset_name
+        )
+
+        if preset:
+
+            theme.update(preset)
+
+    return theme
+
+
+# --------------------------------------------------------
+# Font Size
+# --------------------------------------------------------
 
 def calculate_font_size(
-
     quote,
-
     theme,
-
 ):
 
     words = len(
-
         quote.split()
-
     )
 
     base = theme.get(
-
         "font_size",
-
         56
-
     )
 
     if words <= 8:
+        return int(base * 1.25)
 
-        return int(
+    if words <= 15:
+        return int(base * 1.10)
 
-            base * 1.25
-
-        )
-
-    elif words <= 15:
-
-        return int(
-
-            base * 1.10
-
-        )
-
-    elif words <= 24:
-
+    if words <= 24:
         return base
 
-    elif words <= 35:
+    if words <= 35:
+        return int(base * 0.90)
 
-        return int(
+    if words <= 45:
+        return int(base * 0.80)
 
-            base * 0.88
-
-        )
-
-    elif words <= 45:
-
-        return int(
-
-            base * 0.78
-
-        )
-
-    else:
-
-        return int(
-
-            base * 0.70
-
-        )
+    return int(base * 0.72)
 
 
-# -------------------------------------------------------
-# Smart Wrap Width
-# -------------------------------------------------------
+# --------------------------------------------------------
+# Wrap Width
+# --------------------------------------------------------
 
 def calculate_wrap_width(
-
     quote,
-
 ):
 
     words = len(
-
         quote.split()
-
     )
 
     if words <= 8:
-
         return 10
 
-    elif words <= 15:
-
+    if words <= 15:
         return 14
 
-    elif words <= 25:
-
+    if words <= 25:
         return 18
 
-    elif words <= 35:
-
+    if words <= 35:
         return 22
 
-    else:
-
-        return 26
+    return 26
 
 
-# -------------------------------------------------------
-# Wrap Quote
-# -------------------------------------------------------
+# --------------------------------------------------------
+# Quote Wrapper
+# --------------------------------------------------------
 
 def wrap_quote(
-
     quote,
-
 ):
 
-    width = calculate_wrap_width(
-
-        quote
-
-    )
-
     return textwrap.fill(
-
         f"“{quote.strip()}”",
-
-        width=width
-
+        width=calculate_wrap_width(
+            quote
+        )
     )
-    # -------------------------------------------------------
-# Instagram Safe Zones
-# -------------------------------------------------------
-
-TOP_SAFE = 180
-
-BOTTOM_SAFE = 260
-
-SIDE_PADDING = 110
 
 
-# -------------------------------------------------------
-# Theme Position
-# -------------------------------------------------------
+# --------------------------------------------------------
+# Measure Text
+# --------------------------------------------------------
+
+def measure_text(
+    draw,
+    text,
+    font,
+):
+
+    box = draw.multiline_textbbox(
+        (0, 0),
+        text,
+        font=font,
+        spacing=LINE_SPACING,
+        align="center",
+    )
+
+    width = box[2] - box[0]
+    height = box[3] - box[1]
+
+    return width, height
+
+
+# --------------------------------------------------------
+# Horizontal Position
+# --------------------------------------------------------
+
+def calculate_x(
+    text_width,
+):
+
+    x = (
+        WIDTH - text_width
+    ) // 2
+
+    return max(
+        SIDE_PADDING,
+        x
+    )
+
+
+# --------------------------------------------------------
+# Vertical Position
+# --------------------------------------------------------
 
 def calculate_y(
-
     theme,
-
     text_height,
-
 ):
 
     position = theme.get(
-
         "text_position",
-
         "center"
-
     )
 
     if position == "upper":
 
         return int(
-
             HEIGHT * 0.28
-
         )
 
-    elif position == "lower":
+    if position == "lower":
 
         return int(
-
             HEIGHT * 0.63
-
         )
 
-    elif position == "bottom":
+    if position == "bottom":
 
         return (
-
             HEIGHT
-
             - text_height
-
             - BOTTOM_SAFE
-
         )
 
-    else:
-
-        return (
-
-            HEIGHT
-
-            - text_height
-
-        ) // 2
-
-
-# -------------------------------------------------------
-# Measure Text
-# -------------------------------------------------------
-
-def measure_text(
-
-    draw,
-
-    text,
-
-    font,
-
-):
-
-    bbox = draw.multiline_textbbox(
-
-        (0, 0),
-
-        text,
-
-        font=font,
-
-        spacing=28,
-
-        align="center"
-
-    )
-
-    width = bbox[2] - bbox[0]
-
-    height = bbox[3] - bbox[1]
-
-    return width, height
-
-
-# -------------------------------------------------------
-# Horizontal Center
-# -------------------------------------------------------
-
-def calculate_x(
-
-    text_width,
-
-):
-
-    x = (
-
-        WIDTH
-
-        - text_width
-
+    return (
+        HEIGHT
+        - text_height
     ) // 2
-
-    if x < SIDE_PADDING:
-
-        x = SIDE_PADDING
-
-    return x
-
-
-# -------------------------------------------------------
+# --------------------------------------------------------
 # Premium Glass Card
-# -------------------------------------------------------
+# --------------------------------------------------------
 
 def draw_card(
-
     img,
-
     x,
-
     y,
-
-    w,
-
-    h,
-
+    width,
+    height,
     theme,
-
 ):
 
     if not theme.get(
-
         "card",
-
         False
-
     ):
-
         return
 
     alpha = theme.get(
-
         "card_alpha",
-
-        85
-
+        70
     )
 
     radius = theme.get(
-
         "card_radius",
-
         45
-
     )
 
     padding = 55
 
     layer = Image.new(
-
         "RGBA",
-
         img.size,
-
         (0, 0, 0, 0)
-
     )
 
     painter = ImageDraw.Draw(
-
         layer
-
     )
 
     painter.rounded_rectangle(
 
         (
-
             x - padding,
-
             y - padding,
-
-            x + w + padding,
-
-            y + h + padding,
-
+            x + width + padding,
+            y + height + padding,
         ),
 
         radius=radius,
 
         fill=(
-
             0,
-
             0,
-
             0,
-
-            alpha
-
-        )
+            alpha,
+        ),
 
     )
 
     layer = layer.filter(
 
         ImageFilter.GaussianBlur(
-
             6
-
         )
 
     )
 
     img.alpha_composite(
-
         layer
-
     )
 
 
-# -------------------------------------------------------
+# --------------------------------------------------------
 # Premium Shadow
-# -------------------------------------------------------
+# --------------------------------------------------------
 
 def draw_shadow(
-
     draw,
-
     text,
-
     x,
-
     y,
-
     font,
-
     theme,
-
 ):
 
     blur = theme.get(
-
         "shadow_blur",
-
         4
-
     )
 
-    color = theme.get(
-
+    shadow = theme.get(
         "shadow_color",
-
         (0, 0, 0)
-
     )
 
     for dx in range(
-
         -blur,
-
-        blur + 1
-
+        blur + 1,
     ):
 
         for dy in range(
-
             -blur,
-
-            blur + 1
-
+            blur + 1,
         ):
 
             if dx == 0 and dy == 0:
-
                 continue
 
             draw.multiline_text(
 
                 (
-
                     x + dx,
-
-                    y + dy
-
+                    y + dy,
                 ),
 
                 text,
 
                 font=font,
 
-                fill=color,
+                fill=shadow,
 
-                spacing=28,
+                spacing=LINE_SPACING,
 
-                align="center"
+                align="center",
 
             )
-            # -------------------------------------------------------
+
+
+# --------------------------------------------------------
+# Main Text Renderer
+# --------------------------------------------------------
+
+def draw_text(
+
+    img,
+
+    quote,
+
+    theme,
+
+):
+
+    draw = ImageDraw.Draw(
+        img
+    )
+
+    font_size = calculate_font_size(
+        quote,
+        theme,
+    )
+
+    font = get_font(
+        font_size
+    )
+
+    wrapped = wrap_quote(
+        quote
+    )
+
+    text_width, text_height = measure_text(
+
+        draw,
+
+        wrapped,
+
+        font,
+
+    )
+
+    x = calculate_x(
+        text_width
+    )
+
+    y = calculate_y(
+        theme,
+        text_height,
+    )
+
+    draw_card(
+
+        img,
+
+        x,
+
+        y,
+
+        text_width,
+
+        text_height,
+
+        theme,
+
+    )
+
+    draw = ImageDraw.Draw(
+        img
+    )
+
+    draw_shadow(
+
+        draw,
+
+        wrapped,
+
+        x,
+
+        y,
+
+        font,
+
+        theme,
+
+    )
+
+    draw.multiline_text(
+
+        (
+            x,
+            y,
+        ),
+
+        wrapped,
+
+        font=font,
+
+        fill=theme.get(
+            "text_color",
+            (
+                255,
+                255,
+                255,
+            ),
+        ),
+
+        spacing=LINE_SPACING,
+
+        align="center",
+
+    )
+# --------------------------------------------------------
 # Create Quote Image
-# -------------------------------------------------------
+# --------------------------------------------------------
 
 def create_quote_image(
 
@@ -555,31 +536,11 @@ def create_quote_image(
 
     )
 
-    theme = get_theme(
+    theme = build_theme(
 
         theme_name,
 
-        preset_name
-
-    )
-
-    font_size = calculate_font_size(
-
-        quote,
-
-        theme
-
-    )
-
-    font = get_font(
-
-        font_size
-
-    )
-
-    text = wrap_quote(
-
-        quote
+        preset_name,
 
     )
 
@@ -591,7 +552,7 @@ def create_quote_image(
 
             WIDTH,
 
-            HEIGHT
+            HEIGHT,
 
         ),
 
@@ -603,113 +564,19 @@ def create_quote_image(
 
             0,
 
-            0
+            0,
 
-        )
-
-    )
-
-    draw = ImageDraw.Draw(
-
-        img
+        ),
 
     )
 
-    text_width, text_height = measure_text(
-
-        draw,
-
-        text,
-
-        font
-
-    )
-
-    x = calculate_x(
-
-        text_width
-
-    )
-
-    y = calculate_y(
-
-        theme,
-
-        text_height
-
-    )
-
-    draw_card(
+    draw_text(
 
         img,
 
-        x,
+        quote,
 
-        y,
-
-        text_width,
-
-        text_height,
-
-        theme
-
-    )
-
-    draw = ImageDraw.Draw(
-
-        img
-
-    )
-
-    draw_shadow(
-
-        draw,
-
-        text,
-
-        x,
-
-        y,
-
-        font,
-
-        theme
-
-    )
-
-    draw.multiline_text(
-
-        (
-
-            x,
-
-            y
-
-        ),
-
-        text,
-
-        font=font,
-
-        fill=theme.get(
-
-            "text_color",
-
-            (
-
-                255,
-
-                255,
-
-                255
-
-            )
-
-        ),
-
-        spacing=28,
-
-        align="center"
+        theme,
 
     )
 
@@ -720,3 +587,26 @@ def create_quote_image(
     )
 
     return output_path
+
+
+# --------------------------------------------------------
+# Test
+# --------------------------------------------------------
+
+if __name__ == "__main__":
+
+    create_quote_image(
+
+        "The quality of your future depends on the habits you repeat every day.",
+
+        output_path="temp/test.png",
+
+        theme_name="apple",
+
+    )
+
+    print(
+
+        "Typography Engine Ready"
+
+    )
