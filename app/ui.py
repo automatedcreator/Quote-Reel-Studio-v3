@@ -145,9 +145,9 @@ def generate_reels(
                 project
             )
 
-        captions = []
+                        captions = []
 
-            hashtags = [
+        hashtags = [
 
             "#quotes",
 
@@ -160,6 +160,7 @@ def generate_reels(
         ]
 
         for i, quote in enumerate(quotes):
+
             image = create_quote_image(
 
                 quote,
@@ -168,11 +169,7 @@ def generate_reels(
 
             )
 
-            output = (
-
-                f"output/reel_{i+1:03d}.mp4"
-
-            )
+            output = f"output/reel_{i+1:03d}.mp4"
 
             render_reel(
 
@@ -215,7 +212,6 @@ def generate_reels(
                 tracker.status()
 
             )
-
         create_summary(
 
             theme_name,
