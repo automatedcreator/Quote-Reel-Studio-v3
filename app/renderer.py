@@ -1,14 +1,29 @@
 import random
 
 from moviepy.editor import (
+
     VideoFileClip,
+
     CompositeVideoClip,
+
     ColorClip,
+
     ImageClip,
+
     vfx,
+
 )
 
-from app.config import WIDTH, HEIGHT, FPS
+from app.config import (
+
+    WIDTH,
+
+    HEIGHT,
+
+    FPS,
+
+)
+
 from app.themes import get_theme
 
 
@@ -27,7 +42,11 @@ def prepare_video(
 
 ):
 
-    video = VideoFileClip(video_path)
+    video = VideoFileClip(
+
+        video_path
+
+    )
 
     if video.duration > CLIP_DURATION:
 
@@ -47,7 +66,11 @@ def prepare_video(
 
         )
 
-    video = video.resize(height=HEIGHT)
+    video = video.resize(
+
+        height=HEIGHT
+
+    )
 
     if video.w > WIDTH:
 
@@ -81,7 +104,50 @@ def prepare_video(
 
 
 # ---------------------------------------------------
-# Overlay
+# Cinematic Zoom
+# ---------------------------------------------------
+
+def apply_zoom(
+
+    clip,
+
+    theme,
+
+):
+
+    zoom = theme.get(
+
+        "zoom_speed",
+
+        1.03
+
+    )
+
+    if zoom <= 1:
+
+        return clip
+
+    return clip.resize(
+
+        lambda t:
+
+        1 +
+
+        (
+
+            (zoom - 1)
+
+            *
+
+            (t / clip.duration)
+
+        )
+
+    )
+
+
+# ---------------------------------------------------
+# Vignette Overlay
 # ---------------------------------------------------
 
 def build_overlay(
@@ -92,33 +158,33 @@ def build_overlay(
 
 ):
 
-    overlay = ColorClip(
+    return (
 
-        (WIDTH, HEIGHT),
+        ColorClip(
 
-        color=(0, 0, 0)
+            (WIDTH, HEIGHT),
 
-    )
+            color=(0, 0, 0)
 
-    overlay = overlay.set_duration(duration)
+        )
 
-    overlay = overlay.set_opacity(
+        .set_duration(duration)
 
-        theme.get(
+        .set_opacity(
 
-            "overlay_opacity",
+            theme.get(
 
-            0.30
+                "overlay_opacity",
+
+                0.30
+
+            )
 
         )
 
     )
-
-    return overlay
-
-
-# ---------------------------------------------------
-# Quote Animation
+    # ---------------------------------------------------
+# Premium Quote Animation
 # ---------------------------------------------------
 
 def build_quote(
@@ -141,13 +207,55 @@ def build_quote(
 
     clip = (
 
-        ImageClip(image_path)
+        ImageClip(
 
-        .set_duration(duration)
+            image_path
+
+        )
+
+        .set_duration(
+
+            duration
+
+        )
 
     )
 
-    if animation == "slide_up":
+    # -------------------------
+    # Fade
+    # -------------------------
+
+    if animation == "fade":
+
+        clip = (
+
+            clip
+
+            .set_position(
+
+                "center"
+
+            )
+
+            .fadein(
+
+                0.7
+
+            )
+
+            .fadeout(
+
+                0.7
+
+            )
+
+        )
+
+    # -------------------------
+    # Slide Up
+    # -------------------------
+
+    elif animation == "slide_up":
 
         clip = clip.set_position(
 
@@ -155,17 +263,43 @@ def build_quote(
 
                 "center",
 
-                HEIGHT * 0.62 - min(
+                HEIGHT * 0.68
 
-                    t * 90,
+                -
 
-                    90
+                min(
+
+                    t * 110,
+
+                    110
 
                 )
 
             )
 
         )
+
+        clip = (
+
+            clip
+
+            .fadein(
+
+                0.6
+
+            )
+
+            .fadeout(
+
+                0.6
+
+            )
+
+        )
+
+    # -------------------------
+    # Slide Down
+    # -------------------------
 
     elif animation == "slide_down":
 
@@ -175,11 +309,15 @@ def build_quote(
 
                 "center",
 
-                HEIGHT * 0.35 + min(
+                HEIGHT * 0.22
 
-                    t * 90,
+                +
 
-                    90
+                min(
+
+                    t * 110,
+
+                    110
 
                 )
 
@@ -187,41 +325,149 @@ def build_quote(
 
         )
 
-    elif animation == "zoom":
+        clip = (
 
-        clip = clip.resize(
+            clip
 
-            lambda t: 0.92 + min(
+            .fadein(
 
-                t * 0.03,
+                0.6
 
-                0.08
+            )
+
+            .fadeout(
+
+                0.6
 
             )
 
         )
 
-        clip = clip.set_position("center")
+    # -------------------------
+    # Zoom
+    # -------------------------
+
+    elif animation == "zoom":
+
+        clip = (
+
+            clip
+
+            .resize(
+
+                lambda t:
+
+                0.95
+
+                +
+
+                min(
+
+                    t * 0.02,
+
+                    0.08
+
+                )
+
+            )
+
+            .set_position(
+
+                "center"
+
+            )
+
+            .fadein(
+
+                0.6
+
+            )
+
+            .fadeout(
+
+                0.6
+
+            )
+
+        )
+
+    # -------------------------
+    # Floating
+    # -------------------------
+
+    elif animation == "float":
+
+        clip = clip.set_position(
+
+            lambda t: (
+
+                "center",
+
+                HEIGHT * 0.50
+
+                +
+
+                12
+
+                *
+
+                __import__("math").sin(
+
+                    t * 1.5
+
+                )
+
+            )
+
+        )
+
+        clip = (
+
+            clip
+
+            .fadein(
+
+                0.6
+
+            )
+
+            .fadeout(
+
+                0.6
+
+            )
+
+        )
 
     else:
 
-        clip = clip.set_position("center")
+        clip = (
 
-    clip = (
+            clip
 
-        clip
+            .set_position(
 
-        .fadein(0.6)
+                "center"
 
-        .fadeout(0.6)
+            )
 
-    )
+            .fadein(
+
+                0.6
+
+            )
+
+            .fadeout(
+
+                0.6
+
+            )
+
+        )
 
     return clip
-
-
-# ---------------------------------------------------
-# Render Reel
+    # ---------------------------------------------------
+# Main Renderer
 # ---------------------------------------------------
 
 def render_reel(
@@ -246,6 +492,10 @@ def render_reel(
 
     )
 
+    # -------------------------
+    # Background Video
+    # -------------------------
+
     video = prepare_video(
 
         video_path,
@@ -254,33 +504,17 @@ def render_reel(
 
     )
 
-    zoom = theme.get(
+    video = apply_zoom(
 
-        "zoom_speed",
+        video,
 
-        1.03
+        theme
 
     )
 
-    if zoom > 1:
-
-        video = video.resize(
-
-            lambda t:
-
-            1 +
-
-            (
-
-                (zoom - 1)
-
-                * t
-
-                / video.duration
-
-            )
-
-        )
+    # -------------------------
+    # Overlay
+    # -------------------------
 
     overlay = build_overlay(
 
@@ -289,6 +523,10 @@ def render_reel(
         theme
 
     )
+
+    # -------------------------
+    # Quote
+    # -------------------------
 
     quote = build_quote(
 
@@ -299,6 +537,10 @@ def render_reel(
         theme
 
     )
+
+    # -------------------------
+    # Final Composition
+    # -------------------------
 
     final = CompositeVideoClip(
 
@@ -312,9 +554,19 @@ def render_reel(
 
         ],
 
-        size=(WIDTH, HEIGHT)
+        size=(
+
+            WIDTH,
+
+            HEIGHT
+
+        )
 
     )
+
+    # -------------------------
+    # Export
+    # -------------------------
 
     final.write_videofile(
 
@@ -330,10 +582,28 @@ def render_reel(
 
         threads=4,
 
+        bitrate="8000k",
+
+        ffmpeg_params=[
+
+            "-movflags",
+
+            "+faststart"
+
+        ],
+
         logger=None
 
     )
 
+    # -------------------------
+    # Cleanup
+    # -------------------------
+
     final.close()
+
+    quote.close()
+
+    overlay.close()
 
     video.close()
