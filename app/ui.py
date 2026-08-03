@@ -8,7 +8,9 @@ import gradio as gr
 from app.quotes import load_quotes
 from app.typography import create_quote_image
 from app.renderer import render_reel
+
 from app.themes import list_themes
+from app.presets import list_presets
 
 from app.export_manager import (
     export_zip,
@@ -32,13 +34,8 @@ from app.logger import (
 )
 
 from app.progress import ProgressTracker
-
 from app.stats import save_stats
 
-
-# --------------------------------------------------
-# Generator
-# --------------------------------------------------
 
 def generate_reels(
 
@@ -48,6 +45,8 @@ def generate_reels(
 
     theme_name,
 
+    preset_name,
+
 ):
 
     start_time = time.time()
@@ -55,7 +54,7 @@ def generate_reels(
     try:
 
         if excel_file is None:
-            raise gr.Error("Upload Excel File")
+            raise gr.Error("Upload Excel")
 
         if not video_files:
             raise gr.Error("Upload Videos")
@@ -91,21 +90,15 @@ def generate_reels(
         )
 
         shutil.copy(
-
             excel_file.name,
-
             "quotes/Simple Quotes.xlsx"
-
         )
 
         for video in video_files:
 
             shutil.copy(
-
                 video.name,
-
                 f"videos/{Path(video.name).name}"
-
             )
 
         quotes = load_quotes(
@@ -117,9 +110,10 @@ def generate_reels(
         )
 
         if len(quotes) == 0:
+
             raise gr.Error("No Quotes Found")
 
-        project_name = Path(
+        project = Path(
             excel_file.name
         ).stem
 
@@ -128,41 +122,27 @@ def generate_reels(
         )
 
         start_project(
-
-            project_name,
-
+            project,
             theme_name,
-
             len(quotes)
-
         )
 
         save_project(
-
-            project_name,
-
+            project,
             theme_name,
-
             len(quotes)
-
         )
 
         copy_quotes(
-
             excel_file.name,
-
-            project_name
-
+            project
         )
 
         for video in video_files:
 
             copy_video(
-
                 video.name,
-
-                project_name
-
+                project
             )
 
         captions = []
@@ -178,14 +158,13 @@ def generate_reels(
             f"#{theme_name}"
 
         ]
-
-        for i, quote in enumerate(quotes):
+                for i, quote in enumerate(quotes):
 
             image = create_quote_image(
 
                 quote,
 
-                theme_name=theme_name
+                theme_name=theme_name,
 
             )
 
@@ -209,7 +188,9 @@ def generate_reels(
 
                 output,
 
-                theme_name
+                theme_name,
+
+                preset_name,
 
             )
 
@@ -217,18 +198,22 @@ def generate_reels(
 
                 output,
 
-                project_name
+                project
 
             )
 
             captions.append(
+
                 quote
+
             )
 
             tracker.update()
 
             log(
+
                 tracker.status()
+
             )
 
         create_summary(
@@ -237,21 +222,25 @@ def generate_reels(
 
             len(quotes),
 
-            project_name
+            project
 
         )
 
         create_caption_file(
+
             captions
+
         )
 
         create_hashtag_file(
+
             hashtags
+
         )
 
         save_stats(
 
-            project_name,
+            project,
 
             theme_name,
 
@@ -267,7 +256,11 @@ def generate_reels(
 
     except Exception as e:
 
-        error(str(e))
+        error(
+
+            str(e)
+
+        )
 
         raise
 
@@ -283,42 +276,69 @@ demo = gr.Interface(
     inputs=[
 
         gr.File(
+
             label="📄 Quotes Excel"
+
         ),
 
         gr.File(
+
             label="🎥 Videos",
+
             file_count="multiple"
+
         ),
 
         gr.Dropdown(
+
             choices=list_themes(),
+
             value="apple",
+
             label="🎨 Theme"
+
+        ),
+
+        gr.Dropdown(
+
+            choices=list_presets(),
+
+            value="Apple Minimal",
+
+            label="✨ Preset"
+
         ),
 
     ],
 
     outputs=[
+
         gr.File(
+
             label="📦 Download ZIP"
+
         )
+
     ],
 
-    title="🎬 Quote Reel Studio v1.0",
+    title="🎬 Quote Reel Studio v1.1",
 
     description="""
+
 Generate Premium Instagram Reels
 
-✔ Batch Processing
-✔ Themes
-✔ Cinematic Rendering
-✔ Auto Project Save
-✔ Statistics
-✔ Logs
-✔ Captions
-✔ Hashtags
-✔ ZIP Export
+✅ Themes
+
+✅ Premium Presets
+
+✅ Typography Engine
+
+✅ Project Manager
+
+✅ Statistics
+
+✅ ZIP Export
+
 """
 
 )
@@ -326,5 +346,7 @@ Generate Premium Instagram Reels
 if __name__ == "__main__":
 
     demo.launch(
+
         share=True
+
     )

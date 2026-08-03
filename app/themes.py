@@ -1,16 +1,19 @@
 """
-Premium Theme Engine v2
+Premium Theme Engine v3
 """
+
+from copy import deepcopy
+from app.presets import get_preset
 
 THEMES = {
 
     "apple": {
-        "overlay_opacity": 0.22,
-        "brightness": 1.00,
-        "font_size": 54,
-        "text_color": (255,255,255),
-        "shadow_color": (0,0,0),
-        "shadow_blur": 2,
+        "overlay_opacity":0.22,
+        "brightness":1.00,
+        "font_size":54,
+        "text_color":(255,255,255),
+        "shadow_color":(0,0,0),
+        "shadow_blur":2,
         "animation":"fade",
         "zoom_speed":1.05,
         "card":True,
@@ -108,9 +111,34 @@ THEMES = {
 }
 
 
-def get_theme(name):
-    return THEMES.get(name.lower(), THEMES["apple"])
+def get_theme(theme_name, preset_name=None):
+
+    theme = deepcopy(
+        THEMES.get(
+            theme_name.lower(),
+            THEMES["apple"]
+        )
+    )
+
+    if preset_name:
+
+        preset = get_preset(
+            preset_name
+        )
+
+        if preset:
+
+            for key, value in preset.items():
+
+                if key != "theme":
+
+                    theme[key] = value
+
+    return theme
 
 
 def list_themes():
-    return list(THEMES.keys())
+
+    return list(
+        THEMES.keys()
+    )
