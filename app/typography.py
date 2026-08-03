@@ -1,5 +1,5 @@
 """
-Premium Typography Engine
+Premium Typography Engine v2
 """
 
 from pathlib import Path
@@ -27,9 +27,9 @@ FONT_URL = (
 )
 
 
-# ----------------------------------------------------
+# ---------------------------------------------------
 # Font
-# ----------------------------------------------------
+# ---------------------------------------------------
 
 def ensure_font():
 
@@ -44,9 +44,7 @@ def ensure_font():
 
         r.raise_for_status()
 
-        FONT_FILE.write_bytes(
-            r.content
-        )
+        FONT_FILE.write_bytes(r.content)
 
     return FONT_FILE
 
@@ -59,9 +57,49 @@ def get_font(size):
     )
 
 
-# ----------------------------------------------------
+# ---------------------------------------------------
+# Glass Card
+# ---------------------------------------------------
+
+def draw_glass_card(
+
+    draw,
+
+    box,
+
+    theme,
+
+):
+
+    if not theme.get("card", True):
+        return
+
+    alpha = theme.get(
+        "card_alpha",
+        90
+    )
+
+    radius = theme.get(
+        "card_radius",
+        50
+    )
+
+    draw.rounded_rectangle(
+
+        box,
+
+        radius=radius,
+
+        fill=(25, 25, 25, alpha),
+
+        outline=(255, 255, 255, 18),
+
+        width=2,
+
+    )
+    # ---------------------------------------------------
 # Quote Image
-# ----------------------------------------------------
+# ---------------------------------------------------
 
 def create_quote_image(
 
@@ -92,16 +130,14 @@ def create_quote_image(
     draw = ImageDraw.Draw(img)
 
     font = get_font(
-
         theme["font_size"]
-
     )
 
     wrapped = textwrap.fill(
 
         f"“{quote.strip()}”",
 
-        width=18
+        width=22
 
     )
 
@@ -113,7 +149,7 @@ def create_quote_image(
 
         font=font,
 
-        spacing=24,
+        spacing=34,
 
         align="center"
 
@@ -125,46 +161,39 @@ def create_quote_image(
     x = (WIDTH - w) // 2
     y = (HEIGHT - h) // 2
 
-    # -----------------------------
-    # Glass Card
-    # -----------------------------
-
-    padding = 80
+    padding_x = 90
+    padding_y = 70
 
     card = (
 
-        x - padding,
+        x - padding_x,
 
-        y - padding,
+        y - padding_y,
 
-        x + w + padding,
+        x + w + padding_x,
 
-        y + h + padding,
+        y + h + padding_y,
 
     )
 
-    draw.rounded_rectangle(
+    draw_glass_card(
+
+        draw,
 
         card,
 
-        radius=45,
+        theme
 
-        fill=(20, 20, 20, 110)
-
-    )
-
-    # -----------------------------
-    # Shadow
-    # -----------------------------
-
-    blur = theme.get(
-        "shadow_blur",
-        5
     )
 
     shadow = theme.get(
         "shadow_color",
         (0, 0, 0)
+    )
+
+    blur = theme.get(
+        "shadow_blur",
+        4
     )
 
     for dx in range(-blur, blur + 1):
@@ -180,7 +209,7 @@ def create_quote_image(
 
                     x + dx,
 
-                    y + dy
+                    y + dy,
 
                 ),
 
@@ -190,15 +219,11 @@ def create_quote_image(
 
                 fill=shadow,
 
-                spacing=24,
+                spacing=34,
 
-                align="center"
+                align="center",
 
             )
-
-    # -----------------------------
-    # Main Text
-    # -----------------------------
 
     draw.multiline_text(
 
@@ -206,7 +231,7 @@ def create_quote_image(
 
             x,
 
-            y
+            y,
 
         ),
 
@@ -216,9 +241,9 @@ def create_quote_image(
 
         fill=theme["text_color"],
 
-        spacing=24,
+        spacing=34,
 
-        align="center"
+        align="center",
 
     )
 
