@@ -147,7 +147,7 @@ def generate_reels(
 
         captions = []
 
-        hashtags = [
+                hashtags = [
 
             "#quotes",
 
@@ -158,8 +158,8 @@ def generate_reels(
             f"#{theme_name}"
 
         ]
-                for i, quote in enumerate(quotes):
 
+        for i, quote in enumerate(quotes):
             image = create_quote_image(
 
                 quote,
