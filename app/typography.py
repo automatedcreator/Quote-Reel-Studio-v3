@@ -4,6 +4,7 @@ Reference Style Edition
 (Fixed)
 """
 
+import re
 import uuid
 from pathlib import Path
 import requests
@@ -56,6 +57,17 @@ FONTS = {
     "default": ("Manrope", "SemiBold"),
 }
 
+# None of the fonts above contain Devanagari glyphs (Hindi/Marathi/etc.),
+# so Hindi quotes would render as blank "tofu" boxes. Any quote containing
+# Devanagari characters is automatically routed to this font instead,
+# regardless of theme. Mukta ExtraBold has full Devanagari + Latin coverage.
+DEVANAGARI_FONT = ("Mukta", "ExtraBold")
+DEVANAGARI_PATTERN = re.compile(r"[\u0900-\u097F]")
+
+
+def contains_devanagari(text):
+    return bool(DEVANAGARI_PATTERN.search(text or ""))
+
 
 FONT_DOWNLOADS = {
     "Manrope":
@@ -81,6 +93,9 @@ FONT_DOWNLOADS = {
 
     "SpaceGrotesk":
         "https://raw.githubusercontent.com/google/fonts/main/ofl/spacegrotesk/SpaceGrotesk%5Bwght%5D.ttf",
+
+    "Mukta":
+        "https://raw.githubusercontent.com/google/fonts/main/ofl/mukta/Mukta-ExtraBold.ttf",
 }
 
 
@@ -115,9 +130,12 @@ def ensure_font(family):
 # Load Theme Font
 # --------------------------------------------------
 
-def get_font(size, theme_name="apple"):
+def get_font(size, theme_name="apple", text=None):
 
-    family, weight = FONTS.get(theme_name, FONTS["default"])
+    if contains_devanagari(text):
+        family, weight = DEVANAGARI_FONT
+    else:
+        family, weight = FONTS.get(theme_name, FONTS["default"])
 
     font = ImageFont.truetype(str(ensure_font(family)), size)
 
@@ -186,7 +204,7 @@ def fit_font_size(quote, theme_name):
 
     while size >= 34:
 
-        font = get_font(size, theme_name)
+        font = get_font(size, theme_name, text=quote)
 
         wrapped = wrap_quote(quote, font, draw)
 
@@ -206,7 +224,7 @@ def fit_font_size(quote, theme_name):
 
         size -= 2
 
-    font = get_font(34, theme_name)
+    font = get_font(34, theme_name, text=quote)
     wrapped = wrap_quote(quote, font, draw)
 
     bbox = draw.multiline_textbbox(
