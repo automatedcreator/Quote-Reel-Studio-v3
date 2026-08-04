@@ -11,6 +11,8 @@ THEMES = {
         "font_size": 56,
         "text_color": (255,255,255),
 
+        "accent_color": (255, 107, 90),
+
         "overlay_opacity":0.28,
         "brightness":0.95,
 
@@ -33,6 +35,8 @@ THEMES = {
 
         "font_size":60,
         "text_color":(245,215,120),
+
+        "accent_color": (255, 255, 255),
 
         "overlay_opacity":0.45,
         "brightness":0.82,
@@ -57,6 +61,8 @@ THEMES = {
         "font_size":64,
         "text_color":(255,255,255),
 
+        "accent_color": (255, 99, 71),
+
         "overlay_opacity":0.22,
         "brightness":1.08,
 
@@ -78,6 +84,8 @@ THEMES = {
         "font_size":58,
         "text_color":(235,235,235),
 
+        "accent_color": (255, 170, 110),
+
         "overlay_opacity":0.50,
         "brightness":0.75,
 
@@ -98,6 +106,8 @@ THEMES = {
 
         "font_size":54,
         "text_color":(255,255,255),
+
+        "accent_color": (255, 181, 71),
 
         "overlay_opacity":0.34,
         "brightness":0.92,
@@ -122,6 +132,8 @@ THEMES = {
         "font_size":56,
         "text_color":(185,255,185),
 
+        "accent_color": (160, 255, 170),
+
         "overlay_opacity":0.30,
         "brightness":0.90,
 
@@ -145,6 +157,8 @@ THEMES = {
         "font_size":58,
         "text_color":(110,240,255),
 
+        "accent_color": (255, 90, 170),
+
         "overlay_opacity":0.42,
         "brightness":1.00,
 
@@ -165,6 +179,8 @@ THEMES = {
 
         "font_size":52,
         "text_color":(252,245,225),
+
+        "accent_color": (214, 178, 90),
 
         "overlay_opacity":0.34,
         "brightness":0.92,
@@ -187,6 +203,8 @@ THEMES = {
         "font_size":48,
         "text_color":(255,255,255),
 
+        "accent_color": (255, 200, 90),
+
         "overlay_opacity":0.18,
         "brightness":1.05,
 
@@ -207,6 +225,8 @@ THEMES = {
 
         "font_size":60,
         "text_color":(255,255,255),
+
+        "accent_color": (255, 120, 140),
 
         "overlay_opacity":0.38,
         "brightness":0.88,
