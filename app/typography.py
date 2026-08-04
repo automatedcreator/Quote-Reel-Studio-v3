@@ -165,9 +165,12 @@ def text_width(draw, text, font):
 # Premium Pixel Wrapper
 # --------------------------------------------------
 
-def wrap_quote(quote, font, draw):
+def wrap_quote(quote, font, draw, add_quotes=True):
 
-    quote = f"\u201c{quote.strip()}\u201d"
+    quote = quote.strip()
+
+    if add_quotes:
+        quote = f"\u201c{quote}\u201d"
 
     words = quote.split()
 
@@ -195,24 +198,29 @@ def wrap_quote(quote, font, draw):
 # Dynamic Font Fitting
 # --------------------------------------------------
 
-def fit_font_size(quote, theme_name):
+def fit_font_size(quote, theme_name, add_quotes=True):
 
     dummy = Image.new("RGB", (WIDTH, HEIGHT))
     draw = ImageDraw.Draw(dummy)
 
     size = 86
 
+    # Tighter line spacing (0.14x) reads as clean editorial captioning,
+    # closer to the reference reels, rather than the looser 0.20x
+    # spacing which looks more like a poster/quote-card.
+    spacing_ratio = 0.14
+
     while size >= 34:
 
         font = get_font(size, theme_name, text=quote)
 
-        wrapped = wrap_quote(quote, font, draw)
+        wrapped = wrap_quote(quote, font, draw, add_quotes=add_quotes)
 
         bbox = draw.multiline_textbbox(
             (0, 0),
             wrapped,
             font=font,
-            spacing=int(size * 0.20),
+            spacing=int(size * spacing_ratio),
             align="center",
         )
 
@@ -220,12 +228,12 @@ def fit_font_size(quote, theme_name):
         h = bbox[3] - bbox[1]
 
         if w <= CONTENT_WIDTH and h <= 900:
-            return (font, wrapped, w, h, int(size * 0.20))
+            return (font, wrapped, w, h, int(size * spacing_ratio))
 
         size -= 2
 
     font = get_font(34, theme_name, text=quote)
-    wrapped = wrap_quote(quote, font, draw)
+    wrapped = wrap_quote(quote, font, draw, add_quotes=add_quotes)
 
     bbox = draw.multiline_textbbox(
         (0, 0),
@@ -289,9 +297,42 @@ def draw_card(img, x, y, w, h, theme):
 
 
 # --------------------------------------------------
-# Premium Stroke (theme-aware outline)
+# --------------------------------------------------
+# Soft Drop Shadow (premium, matches reference reels â€”
+# each theme already defines shadow_color/shadow_blur;
+# this replaces the old hard 8-directional stroke that
+# ignored those values and made every theme look identical)
 # --------------------------------------------------
 
+def draw_soft_shadow(img, text, x, y, font, spacing, shadow_color, blur_radius):
+
+    if blur_radius <= 0:
+        return
+
+    offset = max(2, blur_radius // 2)
+
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    painter = ImageDraw.Draw(layer)
+
+    r, g, b = shadow_color[:3]
+
+    painter.multiline_text(
+        (x, y + offset),
+        text,
+        font=font,
+        fill=(r, g, b, 180),
+        spacing=spacing,
+        align="center",
+    )
+
+    layer = layer.filter(ImageFilter.GaussianBlur(blur_radius))
+
+    img.alpha_composite(layer)
+
+
+# Optional hard outline â€” off by default (no theme sets "stroke"),
+# kept for anyone who explicitly wants a poster/meme-style outline
+# instead of a soft shadow.
 def draw_stroke(draw, text, x, y, font, spacing, stroke_width, stroke_color):
 
     for ox in range(-stroke_width, stroke_width + 1):
@@ -318,13 +359,19 @@ def draw_text(img, quote, theme_name, theme, output_path):
     """
     img must be an RGBA Pillow Image.
     Renders the wrapped/fitted quote onto img, applies optional card
-    background, stroke outline, accent line and watermark, then saves
-    to output_path.
+    background, soft shadow (or hard outline if explicitly requested),
+    accent line and watermark, then saves to output_path.
     """
 
     draw = ImageDraw.Draw(img)
 
-    font, wrapped, w, h, spacing = fit_font_size(quote, theme_name)
+    add_quotes = theme.get("quote_marks", False)
+
+    font, wrapped, w, h, spacing = fit_font_size(
+        quote,
+        theme_name,
+        add_quotes=add_quotes,
+    )
 
     x, y = calculate_position(w, h, theme)
 
@@ -334,20 +381,37 @@ def draw_text(img, quote, theme_name, theme, output_path):
     # Re-bind draw in case draw_card composited a new layer onto img
     draw = ImageDraw.Draw(img)
 
-    # Stroke / outline
-    stroke_width = theme.get("stroke", 2)
-    stroke_color = theme.get("stroke_color", (0, 0, 0))
+    # Soft shadow (default, premium look) or hard outline (opt-in)
+    stroke_width = theme.get("stroke", 0)
 
-    draw_stroke(
-        draw,
-        wrapped,
-        x,
-        y,
-        font,
-        spacing,
-        stroke_width,
-        stroke_color,
-    )
+    if stroke_width > 0:
+
+        draw_stroke(
+            draw,
+            wrapped,
+            x,
+            y,
+            font,
+            spacing,
+            stroke_width,
+            theme.get("stroke_color", (0, 0, 0)),
+        )
+
+    else:
+
+        draw_soft_shadow(
+            img,
+            wrapped,
+            x,
+            y,
+            font,
+            spacing,
+            theme.get("shadow_color", (0, 0, 0)),
+            theme.get("shadow_blur", 4),
+        )
+
+        # Re-bind draw again since draw_soft_shadow composited a layer
+        draw = ImageDraw.Draw(img)
 
     # Main text fill
     draw.multiline_text(
