@@ -7,3 +7,4 @@ openpyxl
 requests
 imageio
 imageio-ffmpeg
+gradio

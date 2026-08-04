@@ -2,6 +2,8 @@
 Premium Theme Engine v2
 """
 
+from app.presets import get_preset
+
 THEMES = {
 
     "apple": {
@@ -233,13 +235,28 @@ def get_theme(
 
 ):
 
-    return THEMES.get(
-
-        theme_name.lower(),
-
-        THEMES["apple"]
-
+    theme = dict(
+        THEMES.get(
+            theme_name.lower(),
+            THEMES["apple"],
+        )
     )
+
+    if preset_name:
+
+        preset = get_preset(preset_name)
+
+        if preset:
+
+            overrides = {
+                k: v
+                for k, v in preset.items()
+                if k != "theme"
+            }
+
+            theme.update(overrides)
+
+    return theme
 
 
 def list_themes():

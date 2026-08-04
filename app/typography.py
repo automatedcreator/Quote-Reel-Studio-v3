@@ -4,6 +4,7 @@ Reference Style Edition
 (Fixed)
 """
 
+import uuid
 from pathlib import Path
 import requests
 
@@ -15,6 +16,7 @@ from PIL import (
 )
 
 from app.themes import get_theme
+from app.config import TEMP_DIR
 
 
 # --------------------------------------------------
@@ -37,47 +39,48 @@ SIDE_PADDING = 110
 
 FONT_DIR = Path("assets/fonts")
 
+# Each theme maps to a (family, named weight instance) pair. All of these
+# families now ship from Google Fonts as a single variable-font file, so
+# the "weight" is selected at load time via set_variation_by_name(), not
+# via a separate static font file per weight.
 FONTS = {
-    "apple": "Manrope-SemiBold.ttf",
-    "luxury": "CormorantGaramond-Bold.ttf",
-    "podcast": "Inter-SemiBold.ttf",
-    "finance": "IBMPlexSans-SemiBold.ttf",
-    "book": "PlayfairDisplay-Bold.ttf",
-    "travel": "PlusJakartaSans-SemiBold.ttf",
-    "motivation": "Outfit-Bold.ttf",
-    "stoic": "Inter-Medium.ttf",
-    "neon": "SpaceGrotesk-Bold.ttf",
-    "default": "Manrope-SemiBold.ttf",
+    "apple": ("Manrope", "SemiBold"),
+    "luxury": ("CormorantGaramond", "Bold"),
+    "podcast": ("Inter", "SemiBold"),
+    "finance": ("IBMPlexSans", "SemiBold"),
+    "book": ("PlayfairDisplay", "Bold"),
+    "travel": ("PlusJakartaSans", "SemiBold"),
+    "motivation": ("Outfit", "Bold"),
+    "stoic": ("Inter", "Medium"),
+    "neon": ("SpaceGrotesk", "Bold"),
+    "default": ("Manrope", "SemiBold"),
 }
 
 
 FONT_DOWNLOADS = {
-    "Manrope-SemiBold.ttf":
-        "https://github.com/google/fonts/raw/main/ofl/manrope/Manrope-SemiBold.ttf",
+    "Manrope":
+        "https://raw.githubusercontent.com/google/fonts/main/ofl/manrope/Manrope%5Bwght%5D.ttf",
 
-    "Inter-SemiBold.ttf":
-        "https://github.com/google/fonts/raw/main/ofl/inter/Inter-SemiBold.ttf",
+    "Inter":
+        "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf",
 
-    "Inter-Medium.ttf":
-        "https://github.com/google/fonts/raw/main/ofl/inter/Inter-Medium.ttf",
+    "Outfit":
+        "https://raw.githubusercontent.com/google/fonts/main/ofl/outfit/Outfit%5Bwght%5D.ttf",
 
-    "Outfit-Bold.ttf":
-        "https://github.com/google/fonts/raw/main/ofl/outfit/Outfit-Bold.ttf",
+    "PlusJakartaSans":
+        "https://raw.githubusercontent.com/google/fonts/main/ofl/plusjakartasans/PlusJakartaSans%5Bwght%5D.ttf",
 
-    "PlusJakartaSans-SemiBold.ttf":
-        "https://github.com/google/fonts/raw/main/ofl/plusjakartasans/PlusJakartaSans-SemiBold.ttf",
+    "CormorantGaramond":
+        "https://raw.githubusercontent.com/google/fonts/main/ofl/cormorantgaramond/CormorantGaramond%5Bwght%5D.ttf",
 
-    "CormorantGaramond-Bold.ttf":
-        "https://github.com/google/fonts/raw/main/ofl/cormorantgaramond/CormorantGaramond-Bold.ttf",
+    "IBMPlexSans":
+        "https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexsans/IBMPlexSans%5Bwdth%2Cwght%5D.ttf",
 
-    "IBMPlexSans-SemiBold.ttf":
-        "https://github.com/google/fonts/raw/main/ofl/ibmplexsans/IBMPlexSans-SemiBold.ttf",
+    "PlayfairDisplay":
+        "https://raw.githubusercontent.com/google/fonts/main/ofl/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf",
 
-    "PlayfairDisplay-Bold.ttf":
-        "https://github.com/google/fonts/raw/main/ofl/playfairdisplay/PlayfairDisplay-Bold.ttf",
-
-    "SpaceGrotesk-Bold.ttf":
-        "https://github.com/google/fonts/raw/main/ofl/spacegrotesk/SpaceGrotesk-Bold.ttf",
+    "SpaceGrotesk":
+        "https://raw.githubusercontent.com/google/fonts/main/ofl/spacegrotesk/SpaceGrotesk%5Bwght%5D.ttf",
 }
 
 
@@ -85,19 +88,20 @@ FONT_DOWNLOADS = {
 # Font Downloader
 # --------------------------------------------------
 
-def ensure_font(font_name):
+def ensure_font(family):
 
     FONT_DIR.mkdir(parents=True, exist_ok=True)
 
-    font_path = FONT_DIR / font_name
+    font_path = FONT_DIR / f"{family}.ttf"
 
     if font_path.exists():
         return font_path
 
-    url = FONT_DOWNLOADS.get(font_name)
+    url = FONT_DOWNLOADS.get(family)
 
     if url is None:
-        return FONT_DIR / FONTS["default"]
+        default_family = FONTS["default"][0]
+        return ensure_font(default_family)
 
     r = requests.get(url, timeout=30)
     r.raise_for_status()
@@ -113,9 +117,19 @@ def ensure_font(font_name):
 
 def get_font(size, theme_name="apple"):
 
-    font_name = FONTS.get(theme_name, FONTS["default"])
+    family, weight = FONTS.get(theme_name, FONTS["default"])
 
-    return ImageFont.truetype(str(ensure_font(font_name)), size)
+    font = ImageFont.truetype(str(ensure_font(family)), size)
+
+    # These are variable fonts; select the desired weight by its named
+    # instance. Falls back silently to the font's default weight if the
+    # named instance isn't available (e.g. a non-variable font slipped in).
+    try:
+        font.set_variation_by_name(weight)
+    except Exception:
+        pass
+
+    return font
 
 
 # --------------------------------------------------
@@ -360,3 +374,24 @@ def draw_text(img, quote, theme_name, theme, output_path):
     img.save(output_path)
 
     return output_path
+
+
+# --------------------------------------------------
+# Public Entry Point
+# --------------------------------------------------
+
+def create_quote_image(quote, theme_name="apple", preset_name=None):
+    """
+    Builds a transparent 1080x1920 PNG with the quote rendered on it,
+    using the given theme/preset. This is the function main.py and
+    ui.py call â€” it creates the canvas and delegates to draw_text().
+    Returns the path to the saved PNG (str).
+    """
+
+    theme = get_theme(theme_name, preset_name)
+
+    img = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+
+    output_path = TEMP_DIR / f"quote_{uuid.uuid4().hex}.png"
+
+    return draw_text(img, quote, theme_name, theme, str(output_path))
