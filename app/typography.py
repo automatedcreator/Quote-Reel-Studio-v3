@@ -1,722 +1,362 @@
 """
-Premium Typography Engine v2
-Inspired by Premium Instagram Quote Pages
+Premium Typography Engine v3
+Reference Style Edition
+(Fixed)
 """
 
 from pathlib import Path
-import textwrap
-import math
 import requests
 
 from PIL import (
     Image,
     ImageDraw,
     ImageFont,
-    ImageFilter
+    ImageFilter,
 )
 
 from app.themes import get_theme
 
 
-# -------------------------------------------------------
+# --------------------------------------------------
 # Canvas
-# -------------------------------------------------------
+# --------------------------------------------------
 
 WIDTH = 1080
 HEIGHT = 1920
 
-
-# -------------------------------------------------------
-# Font
-# -------------------------------------------------------
-
-FONT_DIR = Path("assets/fonts")
-
-DEFAULT_FONT = FONT_DIR / "NotoSansDevanagari-Regular.ttf"
-
-FONT_URL = (
-    "https://github.com/googlefonts/noto-fonts/raw/main/"
-    "hinted/ttf/NotoSansDevanagari/"
-    "NotoSansDevanagari-Regular.ttf"
-)
-
-
-# -------------------------------------------------------
-# Download Font
-# -------------------------------------------------------
-
-def ensure_font():
-
-    FONT_DIR.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    if not DEFAULT_FONT.exists():
-
-        r = requests.get(FONT_URL)
-
-        r.raise_for_status()
-
-        DEFAULT_FONT.write_bytes(
-            r.content
-        )
-
-    return DEFAULT_FONT
-
-
-# -------------------------------------------------------
-# Load Font
-# -------------------------------------------------------
-
-def get_font(size):
-
-    return ImageFont.truetype(
-
-        str(
-
-            ensure_font()
-
-        ),
-
-        size
-
-    )
-
-
-# -------------------------------------------------------
-# Dynamic Font Size
-# -------------------------------------------------------
-
-def calculate_font_size(
-
-    quote,
-
-    theme,
-
-):
-
-    words = len(
-
-        quote.split()
-
-    )
-
-    base = theme.get(
-
-        "font_size",
-
-        56
-
-    )
-
-    if words <= 8:
-
-        return int(
-
-            base * 1.25
-
-        )
-
-    elif words <= 15:
-
-        return int(
-
-            base * 1.10
-
-        )
-
-    elif words <= 24:
-
-        return base
-
-    elif words <= 35:
-
-        return int(
-
-            base * 0.88
-
-        )
-
-    elif words <= 45:
-
-        return int(
-
-            base * 0.78
-
-        )
-
-    else:
-
-        return int(
-
-            base * 0.70
-
-        )
-
-
-# -------------------------------------------------------
-# Smart Wrap Width
-# -------------------------------------------------------
-
-def calculate_wrap_width(
-
-    quote,
-
-):
-
-    words = len(
-
-        quote.split()
-
-    )
-
-    if words <= 8:
-
-        return 10
-
-    elif words <= 15:
-
-        return 14
-
-    elif words <= 25:
-
-        return 18
-
-    elif words <= 35:
-
-        return 22
-
-    else:
-
-        return 26
-
-
-# -------------------------------------------------------
-# Wrap Quote
-# -------------------------------------------------------
-
-def wrap_quote(
-
-    quote,
-
-):
-
-    width = calculate_wrap_width(
-
-        quote
-
-    )
-
-    return textwrap.fill(
-
-        f"“{quote.strip()}”",
-
-        width=width
-
-    )
-# -------------------------------------------------------
-# Instagram Safe Zones
-# -------------------------------------------------------
+CONTENT_WIDTH = 760
 
 TOP_SAFE = 180
-
-BOTTOM_SAFE = 260
-
+BOTTOM_SAFE = 240
 SIDE_PADDING = 110
 
 
-# -------------------------------------------------------
-# Theme Position
-# -------------------------------------------------------
+# --------------------------------------------------
+# Premium Fonts
+# --------------------------------------------------
 
-def calculate_y(
+FONT_DIR = Path("assets/fonts")
 
-    theme,
+FONTS = {
+    "apple": "Manrope-SemiBold.ttf",
+    "luxury": "CormorantGaramond-Bold.ttf",
+    "podcast": "Inter-SemiBold.ttf",
+    "finance": "IBMPlexSans-SemiBold.ttf",
+    "book": "PlayfairDisplay-Bold.ttf",
+    "travel": "PlusJakartaSans-SemiBold.ttf",
+    "motivation": "Outfit-Bold.ttf",
+    "stoic": "Inter-Medium.ttf",
+    "neon": "SpaceGrotesk-Bold.ttf",
+    "default": "Manrope-SemiBold.ttf",
+}
 
-    text_height,
 
-):
+FONT_DOWNLOADS = {
+    "Manrope-SemiBold.ttf":
+        "https://github.com/google/fonts/raw/main/ofl/manrope/Manrope-SemiBold.ttf",
 
-    position = theme.get(
+    "Inter-SemiBold.ttf":
+        "https://github.com/google/fonts/raw/main/ofl/inter/Inter-SemiBold.ttf",
 
-        "text_position",
+    "Inter-Medium.ttf":
+        "https://github.com/google/fonts/raw/main/ofl/inter/Inter-Medium.ttf",
 
-        "center"
+    "Outfit-Bold.ttf":
+        "https://github.com/google/fonts/raw/main/ofl/outfit/Outfit-Bold.ttf",
 
-    )
+    "PlusJakartaSans-SemiBold.ttf":
+        "https://github.com/google/fonts/raw/main/ofl/plusjakartasans/PlusJakartaSans-SemiBold.ttf",
 
-    if position == "upper":
+    "CormorantGaramond-Bold.ttf":
+        "https://github.com/google/fonts/raw/main/ofl/cormorantgaramond/CormorantGaramond-Bold.ttf",
 
-        return int(
+    "IBMPlexSans-SemiBold.ttf":
+        "https://github.com/google/fonts/raw/main/ofl/ibmplexsans/IBMPlexSans-SemiBold.ttf",
 
-            HEIGHT * 0.28
+    "PlayfairDisplay-Bold.ttf":
+        "https://github.com/google/fonts/raw/main/ofl/playfairdisplay/PlayfairDisplay-Bold.ttf",
 
+    "SpaceGrotesk-Bold.ttf":
+        "https://github.com/google/fonts/raw/main/ofl/spacegrotesk/SpaceGrotesk-Bold.ttf",
+}
+
+
+# --------------------------------------------------
+# Font Downloader
+# --------------------------------------------------
+
+def ensure_font(font_name):
+
+    FONT_DIR.mkdir(parents=True, exist_ok=True)
+
+    font_path = FONT_DIR / font_name
+
+    if font_path.exists():
+        return font_path
+
+    url = FONT_DOWNLOADS.get(font_name)
+
+    if url is None:
+        return FONT_DIR / FONTS["default"]
+
+    r = requests.get(url, timeout=30)
+    r.raise_for_status()
+
+    font_path.write_bytes(r.content)
+
+    return font_path
+
+
+# --------------------------------------------------
+# Load Theme Font
+# --------------------------------------------------
+
+def get_font(size, theme_name="apple"):
+
+    font_name = FONTS.get(theme_name, FONTS["default"])
+
+    return ImageFont.truetype(str(ensure_font(font_name)), size)
+
+
+# --------------------------------------------------
+# Measure Single Line
+# --------------------------------------------------
+
+def text_width(draw, text, font):
+
+    box = draw.textbbox((0, 0), text, font=font)
+
+    return box[2] - box[0]
+
+
+# --------------------------------------------------
+# Premium Pixel Wrapper
+# --------------------------------------------------
+
+def wrap_quote(quote, font, draw):
+
+    quote = f"\u201c{quote.strip()}\u201d"
+
+    words = quote.split()
+
+    lines = []
+    current = ""
+
+    for word in words:
+
+        trial = word if current == "" else current + " " + word
+
+        if text_width(draw, trial, font) <= CONTENT_WIDTH:
+            current = trial
+        else:
+            if current:
+                lines.append(current)
+            current = word
+
+    if current:
+        lines.append(current)
+
+    return "\n".join(lines)
+
+
+# --------------------------------------------------
+# Dynamic Font Fitting
+# --------------------------------------------------
+
+def fit_font_size(quote, theme_name):
+
+    dummy = Image.new("RGB", (WIDTH, HEIGHT))
+    draw = ImageDraw.Draw(dummy)
+
+    size = 86
+
+    while size >= 34:
+
+        font = get_font(size, theme_name)
+
+        wrapped = wrap_quote(quote, font, draw)
+
+        bbox = draw.multiline_textbbox(
+            (0, 0),
+            wrapped,
+            font=font,
+            spacing=int(size * 0.20),
+            align="center",
         )
 
-    elif position == "lower":
+        w = bbox[2] - bbox[0]
+        h = bbox[3] - bbox[1]
 
-        return int(
+        if w <= CONTENT_WIDTH and h <= 900:
+            return (font, wrapped, w, h, int(size * 0.20))
 
-            HEIGHT * 0.63
+        size -= 2
 
-        )
-
-    elif position == "bottom":
-
-        return (
-
-            HEIGHT
-
-            - text_height
-
-            - BOTTOM_SAFE
-
-        )
-
-    else:
-
-        return (
-
-            HEIGHT
-
-            - text_height
-
-        ) // 2
-
-
-# -------------------------------------------------------
-# Measure Text
-# -------------------------------------------------------
-
-def measure_text(
-
-    draw,
-
-    text,
-
-    font,
-
-):
+    font = get_font(34, theme_name)
+    wrapped = wrap_quote(quote, font, draw)
 
     bbox = draw.multiline_textbbox(
-
         (0, 0),
-
-        text,
-
+        wrapped,
         font=font,
-
-        spacing=28,
-
-        align="center"
-
+        spacing=10,
+        align="center",
     )
 
-    width = bbox[2] - bbox[0]
-
-    height = bbox[3] - bbox[1]
-
-    return width, height
+    return (font, wrapped, bbox[2] - bbox[0], bbox[3] - bbox[1], 10)
 
 
-# -------------------------------------------------------
-# Horizontal Center
-# -------------------------------------------------------
+# --------------------------------------------------
+# Optical Positioning
+# --------------------------------------------------
 
-def calculate_x(
+def calculate_position(text_w, text_h, theme):
 
-    text_width,
+    x = (WIDTH - text_w) // 2
+    x = max(SIDE_PADDING, x)
 
-):
+    layout = theme.get("text_position", "center")
 
-    x = (
+    if layout == "upper":
+        y = int(HEIGHT * 0.24)
+    elif layout == "lower":
+        y = int(HEIGHT * 0.60)
+    elif layout == "bottom":
+        y = HEIGHT - text_h - BOTTOM_SAFE
+    else:
+        y = (HEIGHT - text_h) // 2 - 35
 
-        WIDTH
-
-        - text_width
-
-    ) // 2
-
-    if x < SIDE_PADDING:
-
-        x = SIDE_PADDING
-
-    return x
+    return x, y
 
 
-# -------------------------------------------------------
+# --------------------------------------------------
 # Premium Glass Card
-# -------------------------------------------------------
+# --------------------------------------------------
 
-def draw_card(
+def draw_card(img, x, y, w, h, theme):
 
-    img,
-
-    x,
-
-    y,
-
-    w,
-
-    h,
-
-    theme,
-
-):
-
-    if not theme.get(
-
-        "card",
-
-        False
-
-    ):
-
+    if not theme.get("card", False):
         return
 
-    alpha = theme.get(
-
-        "card_alpha",
-
-        85
-
-    )
-
-    radius = theme.get(
-
-        "card_radius",
-
-        45
-
-    )
-
     padding = 55
+    radius = theme.get("card_radius", 42)
+    alpha = theme.get("card_alpha", 65)
 
-    layer = Image.new(
-
-        "RGBA",
-
-        img.size,
-
-        (0, 0, 0, 0)
-
-    )
-
-    painter = ImageDraw.Draw(
-
-        layer
-
-    )
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    painter = ImageDraw.Draw(layer)
 
     painter.rounded_rectangle(
-
-        (
-
-            x - padding,
-
-            y - padding,
-
-            x + w + padding,
-
-            y + h + padding,
-
-        ),
-
+        (x - padding, y - padding, x + w + padding, y + h + padding),
         radius=radius,
-
-        fill=(
-
-            0,
-
-            0,
-
-            0,
-
-            alpha
-
-        )
-
+        fill=(0, 0, 0, alpha),
     )
 
-    layer = layer.filter(
+    layer = layer.filter(ImageFilter.GaussianBlur(10))
 
-        ImageFilter.GaussianBlur(
-
-            6
-
-        )
-
-    )
-
-    img.alpha_composite(
-
-        layer
-
-    )
+    img.alpha_composite(layer)
 
 
-# -------------------------------------------------------
-# Premium Shadow
-# -------------------------------------------------------
+# --------------------------------------------------
+# Premium Stroke (theme-aware outline)
+# --------------------------------------------------
 
-def draw_shadow(
+def draw_stroke(draw, text, x, y, font, spacing, stroke_width, stroke_color):
 
-    draw,
+    for ox in range(-stroke_width, stroke_width + 1):
+        for oy in range(-stroke_width, stroke_width + 1):
 
-    text,
-
-    x,
-
-    y,
-
-    font,
-
-    theme,
-
-):
-
-    blur = theme.get(
-
-        "shadow_blur",
-
-        4
-
-    )
-
-    color = theme.get(
-
-        "shadow_color",
-
-        (0, 0, 0)
-
-    )
-
-    for dx in range(
-
-        -blur,
-
-        blur + 1
-
-    ):
-
-        for dy in range(
-
-            -blur,
-
-            blur + 1
-
-        ):
-
-            if dx == 0 and dy == 0:
-
+            if ox == 0 and oy == 0:
                 continue
 
             draw.multiline_text(
-
-                (
-
-                    x + dx,
-
-                    y + dy
-
-                ),
-
+                (x + ox, y + oy),
                 text,
-
                 font=font,
-
-                fill=color,
-
-                spacing=28,
-
-                align="center"
-
+                fill=stroke_color,
+                spacing=spacing,
+                align="center",
             )
-# -------------------------------------------------------
-# Create Quote Image
-# -------------------------------------------------------
 
-def create_quote_image(
 
-    quote,
+# --------------------------------------------------
+# Main Typography Renderer
+# --------------------------------------------------
 
-    output_path="temp/quote.png",
+def draw_text(img, quote, theme_name, theme, output_path):
+    """
+    img must be an RGBA Pillow Image.
+    Renders the wrapped/fitted quote onto img, applies optional card
+    background, stroke outline, accent line and watermark, then saves
+    to output_path.
+    """
 
-    theme_name="apple",
+    draw = ImageDraw.Draw(img)
 
-    preset_name=None,
+    font, wrapped, w, h, spacing = fit_font_size(quote, theme_name)
 
-):
+    x, y = calculate_position(w, h, theme)
 
-    Path("temp").mkdir(
+    # Glass card background (optional)
+    draw_card(img, x, y, w, h, theme)
 
-        exist_ok=True
+    # Re-bind draw in case draw_card composited a new layer onto img
+    draw = ImageDraw.Draw(img)
 
+    # Stroke / outline
+    stroke_width = theme.get("stroke", 2)
+    stroke_color = theme.get("stroke_color", (0, 0, 0))
+
+    draw_stroke(
+        draw,
+        wrapped,
+        x,
+        y,
+        font,
+        spacing,
+        stroke_width,
+        stroke_color,
     )
 
-    theme = get_theme(
-
-        theme_name,
-
-        preset_name
-
+    # Main text fill
+    draw.multiline_text(
+        (x, y),
+        wrapped,
+        font=font,
+        fill=theme.get("text_color", (255, 255, 255)),
+        spacing=spacing,
+        align="center",
     )
 
-    font_size = calculate_font_size(
+    # Accent line
+    if theme.get("accent_line", False):
 
-        quote,
+        line_width = int(w * 0.55)
+        lx = (WIDTH - line_width) // 2
+        ly = y + h + 70
 
-        theme
-
-    )
-
-    font = get_font(
-
-        font_size
-
-    )
-
-    text = wrap_quote(
-
-        quote
-
-    )
-
-    img = Image.new(
-
-        "RGBA",
-
-        (
-
-            WIDTH,
-
-            HEIGHT
-
-        ),
-
-        (
-
-            0,
-
-            0,
-
-            0,
-
-            0
-
+        draw.rounded_rectangle(
+            (lx, ly, lx + line_width, ly + 8),
+            radius=8,
+            fill=theme.get("accent_color", (255, 255, 255)),
         )
 
-    )
+    # Watermark
+    watermark = theme.get("watermark")
 
-    draw = ImageDraw.Draw(
+    if watermark:
 
-        img
+        wm_font = get_font(34, theme_name)
+        wm_color = (255, 255, 255, 120)
 
-    )
+        draw.text(
+            (WIDTH // 2, HEIGHT - 90),
+            watermark,
+            font=wm_font,
+            fill=wm_color,
+            anchor="mm",
+        )
 
-    text_width, text_height = measure_text(
+    # Save
+    img.save(output_path)
 
-        draw,
-
-        text,
-
-        font
-
-    )
-
-    x = calculate_x(
-
-        text_width
-
-    )
-
-    y = calculate_y(
-
-        theme,
-
-        text_height
-
-    )
-
-    draw_card(
-
-        img,
-
-        x,
-
-        y,
-
-        text_width,
-
-        text_height,
-
-        theme
-
-    )
-
-    draw = ImageDraw.Draw(
-
-        img
-
-    )
-
-    draw_shadow(
-
-        draw,
-
-        text,
-
-        x,
-
-        y,
-
-        font,
-
-        theme
-
-    )
-
-    draw.multiline_text(
-
-        (
-
-            x,
-
-            y
-
-        ),
-
-        text,
-
-        font=font,
-
-        fill=theme.get(
-
-            "text_color",
-
-            (
-
-                255,
-
-                255,
-
-                255
-
-            )
-
-        ),
-
-        spacing=28,
-
-        align="center"
-
-    )
-
-    img.save(
-
-        output_path
-
-    )
-
-    return output_path           
+    return output_path
