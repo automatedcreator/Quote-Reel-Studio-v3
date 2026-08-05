@@ -256,16 +256,34 @@ def split_runs(word):
     return runs
 
 
-def measure_word(draw, word, font, emoji_font):
-    """Returns (runs, total_width) where runs is [(text, font_used, width)]."""
+def measure_word(draw, word, font, emoji_font, letter_spacing=0):
+    """Returns (runs, total_width) where runs is [(text, font_used, width)].
+    When letter_spacing > 0, the word is exploded into per-character runs
+    (emoji runs stay intact) so extra tracking can be inserted between
+    every glyph, not just between whole words."""
+
+    raw_runs = split_runs(word)
+
+    if letter_spacing:
+        expanded = []
+        for run_text, is_emoji in raw_runs:
+            if is_emoji:
+                expanded.append((run_text, is_emoji))
+            else:
+                expanded.extend((ch, False) for ch in run_text)
+        raw_runs = expanded
 
     runs = []
     total = 0
+    n = len(raw_runs)
 
-    for run_text, is_emoji in split_runs(word):
+    for i, (run_text, is_emoji) in enumerate(raw_runs):
 
         font_used = emoji_font if is_emoji else font
         w = text_width(draw, run_text, font_used)
+
+        if letter_spacing and i < n - 1:
+            w += letter_spacing
 
         runs.append((run_text, font_used, w))
         total += w
@@ -277,9 +295,9 @@ def measure_word(draw, word, font, emoji_font):
 # Word Wrapping (accent + emoji aware)
 # --------------------------------------------------
 
-def wrap_words(tokens, font, emoji_font, draw, max_width):
+def wrap_words(tokens, font, emoji_font, draw, max_width, letter_spacing=0):
 
-    space_width = text_width(draw, " ", font)
+    space_width = text_width(draw, " ", font) + letter_spacing
 
     lines = []
     current_line = []
@@ -287,7 +305,7 @@ def wrap_words(tokens, font, emoji_font, draw, max_width):
 
     for word, accent in tokens:
 
-        runs, width = measure_word(draw, word, font, emoji_font)
+        runs, width = measure_word(draw, word, font, emoji_font, letter_spacing)
 
         extra = width if not current_line else space_width + width
 
@@ -326,20 +344,37 @@ def apply_quote_marks(tokens):
     return tokens
 
 
-def apply_auto_highlight(lines):
-    """If nothing was manually marked with **word**, highlight the first
-    wrapped line automatically â€” the two-tone look seen in most reference
-    reels, without requiring the quote text to be specially formatted."""
+def apply_auto_highlight_tokens(tokens):
+    """If nothing was manually marked with **word**, highlight everything
+    up to and including the first comma â€” treated as "the first line" for
+    highlighting purposes, regardless of how it later wraps visually.
+    Everything after the first comma is "the second line" onward, in the
+    normal text color. If the quote has no comma at all, nothing is
+    auto-highlighted (no clause boundary to highlight)."""
 
-    has_explicit_accent = any(
-        w["accent"] for line in lines for w in line
-    )
+    has_explicit_accent = any(accent for _, accent in tokens)
 
-    if not has_explicit_accent and len(lines) > 1:
-        for w in lines[0]:
-            w["accent"] = True
+    if has_explicit_accent:
+        return tokens
 
-    return lines
+    result = []
+    highlighting = True
+    found_comma = False
+
+    for word, accent in tokens:
+
+        if highlighting:
+            result.append((word, True))
+            if "," in word or "ØŒ" in word or "ï¼Œ" in word:
+                highlighting = False
+                found_comma = True
+        else:
+            result.append((word, accent))
+
+    if not found_comma:
+        result = [(word, False) for word, _ in tokens]
+
+    return result
 
 
 def line_width(line, space_width):
@@ -352,25 +387,37 @@ def line_width(line, space_width):
 # Dynamic Font Fitting
 # --------------------------------------------------
 
-def fit_layout(quote, theme_name, add_quotes=True):
+def fit_layout(quote, theme_name, add_quotes=True, letter_spacing=0):
+    """
+    Shrinks text to fit CONTENT_WIDTH/900px block height as before, but:
+      - starts from a smaller base size (more restrained, less poster-like)
+      - once it finds a fit, if the quote is short (1-2 lines) it tries
+        growing the size back up for extra punch, since a one-line quote
+        reads better bold and big than at the same size as a 5-line one
+      - supports per-theme letter_spacing (tracking) in pixels
+    """
 
     dummy = Image.new("RGB", (WIDTH, HEIGHT))
     draw = ImageDraw.Draw(dummy)
 
     tokens = tokenize_accents(quote.strip())
+    tokens = apply_auto_highlight_tokens(tokens)
 
     if add_quotes:
         tokens = apply_quote_marks(tokens)
 
-    size = 86
+    base_max_size = 30
+    min_size = 14
     spacing_ratio = 0.14
 
-    while size >= 34:
+    def attempt(size):
 
         font = get_font(size, theme_name, text=quote)
         emoji_font = get_emoji_font(size)
 
-        lines, space_width = wrap_words(tokens, font, emoji_font, draw, CONTENT_WIDTH)
+        lines, space_width = wrap_words(
+            tokens, font, emoji_font, draw, CONTENT_WIDTH, letter_spacing
+        )
 
         lh = line_height_for(font, draw)
         spacing = int(size * spacing_ratio)
@@ -378,24 +425,49 @@ def fit_layout(quote, theme_name, add_quotes=True):
         block_w = max((line_width(line, space_width) for line in lines), default=0)
         block_h = len(lines) * lh + max(0, len(lines) - 1) * spacing
 
-        if block_w <= CONTENT_WIDTH and block_h <= 900:
-            lines = apply_auto_highlight(lines)
-            return (font, emoji_font, lines, block_w, block_h, spacing, lh, space_width)
+        fits = block_w <= CONTENT_WIDTH and block_h <= 900
 
+        return fits, (font, emoji_font, lines, block_w, block_h, spacing, lh, space_width)
+
+    # Shrink-to-fit pass
+    size = base_max_size
+    result = None
+
+    while size >= min_size:
+        fits, data = attempt(size)
+        if fits:
+            result = data
+            break
         size -= 2
 
-    font = get_font(34, theme_name, text=quote)
-    emoji_font = get_emoji_font(34)
+    if result is None:
+        _, result = attempt(min_size)
+        size = min_size
 
-    lines, space_width = wrap_words(tokens, font, emoji_font, draw, CONTENT_WIDTH)
-    lh = line_height_for(font, draw)
+    # Smart auto-sizing: short quotes get a bigger, punchier size instead
+    # of using the same scale as a long 4-5 line quote.
+    line_count = len(result[2])
 
-    block_w = max((line_width(line, space_width) for line in lines), default=0)
-    block_h = len(lines) * lh + max(0, len(lines) - 1) * 10
+    if line_count == 1:
+        boost_cap = 38
+    elif line_count == 2:
+        boost_cap = 34
+    else:
+        boost_cap = size  # no boost for longer quotes
 
-    lines = apply_auto_highlight(lines)
+    boosted_size = size
 
-    return (font, emoji_font, lines, block_w, block_h, 10, lh, space_width)
+    while boosted_size < boost_cap:
+        boosted_size += 2
+        fits, data = attempt(boosted_size)
+        if fits and len(data[2]) == line_count:
+            result = data
+        else:
+            break
+
+    font, emoji_font, lines, block_w, block_h, spacing, lh, space_width = result
+
+    return (font, emoji_font, lines, block_w, block_h, spacing, lh, space_width)
 
 
 # --------------------------------------------------
@@ -588,6 +660,51 @@ def draw_main_text(draw, layout, text_color, accent_color):
 
 
 # --------------------------------------------------
+# Handle / Watermark â€” centered, letter-tracked, positioned
+# inside the reserved bottom safe zone (BOTTOM_SAFE) so it
+# doesn't collide with Instagram/TikTok/YouTube's own UI
+# (like/comment/share buttons, captions) that sits along the
+# bottom edge of Reels/Shorts.
+# --------------------------------------------------
+
+def draw_watermark_line(img, text, font, y, color, letter_spacing=0,
+                         shadow_color=None, shadow_blur=0):
+
+    draw = ImageDraw.Draw(img)
+
+    chars = list(text)
+    widths = [text_width(draw, ch, font) for ch in chars]
+
+    total_w = sum(widths) + letter_spacing * max(0, len(chars) - 1)
+    start_x = (WIDTH - total_w) // 2
+
+    if shadow_color and shadow_blur > 0:
+
+        layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        shadow_draw = ImageDraw.Draw(layer)
+        offset = max(1, shadow_blur // 2)
+
+        cx = start_x
+        for ch, w in zip(chars, widths):
+            shadow_draw.text(
+                (cx, y + offset),
+                ch,
+                font=font,
+                fill=(*shadow_color[:3], 150),
+            )
+            cx += w + letter_spacing
+
+        layer = layer.filter(ImageFilter.GaussianBlur(shadow_blur))
+        img.alpha_composite(layer)
+        draw = ImageDraw.Draw(img)
+
+    cx = start_x
+    for ch, w in zip(chars, widths):
+        draw.text((cx, y), ch, font=font, fill=color)
+        cx += w + letter_spacing
+
+
+# --------------------------------------------------
 # Main Typography Renderer
 # --------------------------------------------------
 
@@ -614,7 +731,12 @@ def draw_text(img, quote, theme_name, theme, output_path):
         spacing,
         line_h,
         space_width,
-    ) = fit_layout(quote, theme_name, add_quotes=add_quotes)
+    ) = fit_layout(
+        quote,
+        theme_name,
+        add_quotes=add_quotes,
+        letter_spacing=theme.get("letter_spacing", 0),
+    )
 
     x, y = calculate_position(block_w, block_h, theme)
 
